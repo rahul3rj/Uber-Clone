@@ -1,0 +1,104 @@
+import React, { useState } from 'react'
+
+
+const CaptainLogin = () => {
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [captainData, setCaptainData] = useState({});
+  const [showPw, setShowPw] = useState(false);
+
+  const submitHandler = (e) => {
+    e.preventDefault();
+    setCaptainData({
+      email: email,
+      password: password,
+    });
+    // console.log(captainData);
+    setEmail("");
+    setPassword("");
+  };
+  return (
+    <div className="h-screen w-full flex items-center justify-center">
+      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+        <div className='h-12 absolute top-10 left-7 w-auto flex items-center justify-start'>
+          <img
+          onClick={() => {
+            window.location.href = "/";
+          }}
+          src="/Uber-Logo.png"
+          alt=""
+          className="h-12"
+        />
+        <h1 className='text-md text-[#3B864E] poppins-medium'>Captain</h1>
+        </div>
+        <div className="h-auto w-[85vw] flex flex-col items-center justify-center gap-3 mt-25">
+          <h1 className="text-sm w-full text-black poppins-medium">
+            What's your email?
+          </h1>
+          <form onSubmit={submitHandler}>
+            <input
+              required
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+              }}
+              type="email"
+              placeholder="example@email.com"
+              className="h-[5vh] w-[85vw] bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+            />
+
+            <h1 className="text-sm w-full text-black poppins-medium my-3">
+              Password
+            </h1>
+            <div className="w-[85vw] h-[5vh] flex items-center justify-center gap-3 relative">
+                <input
+              required
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+              }}
+              id="createPw"
+              type={showPw ? "text" : "password"}
+              placeholder="Password"
+              className="h-[5vh] w-[85vw] bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+            />
+            <i
+              onClick={() => setShowPw(!showPw)}
+              className={`absolute top-[50%] right-5 transform -translate-y-1/2 cursor-pointer ${showPw ? "ri-eye-fill" : "ri-eye-off-fill"}`}
+            ></i>
+            </div>
+            <button
+              type="submit"
+              className="h-[6vh] w-[85vw] mt-7 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
+            >
+              Log in
+            </button>
+          </form>
+
+          <button
+            onClick={() => {
+              window.location.href = "/user/login";
+            }}
+            className="h-[6vh] w-[85vw] mt-3 bg-[#000] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#222] transition-all duration-200"
+          >
+            Log in as User
+          </button>
+          <h2 className="text-sm w-full text-center text-black/60 poppins-medium">
+            New user?{" "}
+            <span
+              onClick={() => {
+                window.location.href = "/captain/signup";
+              }}
+              className="text-[#000] cursor-pointer poppins-medium hover:underline transition-all duration-200"
+            >
+              Join us as captain
+            </span>
+          </h2>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default CaptainLogin
