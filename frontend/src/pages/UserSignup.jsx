@@ -1,4 +1,8 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { UserDataContext } from "../context/UserContext.jsx";
+import { useContext } from "react";
 
 const UserSignup = () => {
   const [email, setEmail] = useState("");
@@ -10,18 +14,20 @@ const UserSignup = () => {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [UserData, setUserData] = useState({});
 
+  const navigate = useNavigate();
+  const {user, setUser} = useContext(UserDataContext);
+
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setUserData({
-      email: email,
-      fullName: {
-        firstName: firstName,
-        lastName: lastName,
+    const userSignupData = {
+      email,
+      fullname: {
+        firstname: firstName,
+        lastname: lastName,
       },
-      createPassword: createPassword,
-      confirmPassword: confirmPassword,
-    });
+      password: createPassword,
+    };
     // console.log(UserData); //comment it before uploading
     if (createPassword !== confirmPassword) {
       const popup = document.createElement("div");
@@ -39,12 +45,27 @@ const UserSignup = () => {
       setTimeout(() => document.body.removeChild(popup), 3000);
       return;
     }
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/users/register`,
+        userSignupData
+      );
+      if (response.status === 200 || response.status === 201) {
+        const data = response.data;
+        setUser(data.user);
+        localStorage.setItem("user", data.token);
+        navigate("/Home");
+      }
+    } catch (error) {
+      console.error(error);
+      // Optional: show user-friendly error feedback
+    }
+
     setEmail("");
     setFirstName("");
     setLastName("");
     setCreatePassword("");
     setConfirmPassword("");
-    window.location.href = "/";
   };
 
   return (

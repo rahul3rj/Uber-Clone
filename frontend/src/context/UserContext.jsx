@@ -5,14 +5,14 @@ export const UserDataContext = createContext();
 const UserContext = ({ children }) => {
 const [user, setUser] = useState({
     email: "",
-    fullName: {
-        firstName: "",
-        lastName: "",
+    fullname: {
+        firstname: "",
+        lastname: "",
     },
 });
   return (
     <div>
-        <UserDataContext.Provider value={user}>
+        <UserDataContext.Provider value={{user, setUser}}>
             {children}
         </UserDataContext.Provider>
     </div>

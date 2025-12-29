@@ -1,25 +1,42 @@
 import React, { useState } from 'react'
+import axios from 'axios'
+import { useContext } from 'react'
+import { CaptainDataContext } from '../context/CaptainContext.jsx'
+import { useNavigate } from 'react-router-dom'
 
 const CaptainSignup = () => {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [vehiclePlate, setVehiclePlate] = useState("");
+  const [vehicleType, setVehicleType] = useState("");
+  const [vehicleCapacity, setVehicleCapacity] = useState("");
+  const [vehicleColor, setVehicleColor] = useState("");
   const [createPassword, setCreatePassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showCreatePw, setShowCreatePw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [CaptainData, setCaptainData] = useState({});
+
+  const navigate = useNavigate();
+  const {captain, setCaptain} = useContext(CaptainDataContext);
   
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setCaptainData({
+    const capacity = vehicleType === 'motorcycle' ? 1 : vehicleType === 'auto' ? 2 : vehicleType === 'car' ? 3 : 0;
+    const CaptainSignupData = ({
       email: email,
-      fullName: {
-        firstName: firstName,
-        lastName: lastName,
+      fullname: {
+        firstname: firstName,
+        lastname: lastName,
       },
-      createPassword: createPassword,
-      confirmPassword: confirmPassword,
+      password: createPassword,
+      vehicle:{
+        plate: vehiclePlate,
+        vehicleType: vehicleType,
+        capacity: capacity,
+        color: vehicleColor,
+      }
     });
     // console.log(CaptainData); //comment it before uploading
     if (createPassword !== confirmPassword) {
@@ -38,12 +55,30 @@ const CaptainSignup = () => {
       setTimeout(() => document.body.removeChild(popup), 3000);
       return;
     }
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/captains/register`,
+        CaptainSignupData
+      );
+      if (response.status === 200 || response.status === 201) {
+        const data = response.data;
+        setCaptain(data.captain);
+        localStorage.setItem("captain", data.token);
+        navigate("/CaptainHome");
+      }
+    } catch (error) {
+      console.error(error);
+      // Optional: show user-friendly error feedback
+    }
     setEmail("");
     setFirstName("");
     setLastName("");
     setCreatePassword("");
     setConfirmPassword("");
-    window.location.href = "/";
+    setVehiclePlate("");
+    setVehicleType("");
+    setVehicleCapacity("");
+    setVehicleColor("");
   };
 
   return (
@@ -140,6 +175,79 @@ const CaptainSignup = () => {
               className={`absolute top-[50%] right-5 transform -translate-y-1/2 cursor-pointer ${showConfirmPw ? "ri-eye-fill" : "ri-eye-off-fill"}`}
             ></i>
             </div>
+            <h1 className="text-sm w-full text-black poppins-medium">
+                  Vehicle Information
+                </h1>
+            <div className="w-full flex items-start justify-between gap-3">
+              <div className="w-1/2 flex flex-col gap-3">
+                
+                <input
+                  required
+                  value={vehiclePlate}
+                  onChange={(e) => {
+                    setVehiclePlate(e.target.value);
+                  }}
+                  type="text"
+                  placeholder="Vehicle plate number"
+                  className="h-[5vh] w-full bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+                />
+              </div>
+              <div className="w-1/2 flex flex-col gap-3">
+                
+                <div className="relative">
+                  <select
+                    required
+                    value={vehicleColor}
+                    onChange={(e) => {
+                      setVehicleColor(e.target.value);
+                    }}
+                    className="h-[5vh] w-full bg-[#f2f2f2] rounded-md pl-5 pr-10 outline-none text-sm poppins-medium text-gray-500 appearance-none"
+                  >
+                    <option value="" disabled hidden>Vehicle Color</option>
+                    <option value="red">Red</option>
+                    <option value="blue">Blue</option>
+                    <option value="white">White</option>
+                    <option value="grey">Grey</option>
+                    <option value="black">Black</option>
+                    <option value="other">Other...</option>
+                  </select>
+                  <i className="ri-arrow-down-s-line absolute top-1/2 right-5 transform -translate-y-1/2 text-black pointer-events-none"></i>
+                </div>
+              </div>
+            </div>
+            <div className="w-full flex items-start justify-between gap-3">
+              <div className="w-1/2 flex flex-col gap-3">
+                
+                <div className="relative">
+                  <select
+                    required
+                    value={vehicleType}
+                    onChange={(e) => {
+                      setVehicleType(e.target.value);
+                    }}
+                    className="h-[5vh] w-full bg-[#f2f2f2] rounded-md pl-5 pr-10 outline-none text-sm poppins-medium text-gray-500 appearance-none"
+                  >
+                    <option value="" disabled hidden>Vehicle Type</option>
+                    <option value="motorcycle">Motorcycle</option>
+                    <option value="auto">Auto</option>
+                    <option value="car">Car</option>
+                  </select>
+                  <i className="ri-arrow-down-s-line absolute top-1/2 right-5 transform -translate-y-1/2 text-gray-500 pointer-events-none"></i>
+                </div>
+              </div>
+              <div className="w-1/2 flex flex-col gap-3">
+                <input
+                  readOnly
+                  required
+                  value={vehicleType === "motorcycle" ? 1 : vehicleType === "auto" ? 2 : vehicleType === "car" ? 3 : ""}
+                  type="number"
+                  placeholder="Vehicle capacity"
+                  className="h-[5vh] w-full bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+                />
+              </div>
+            </div>
+            
+            
             <button
               type="submit"
               className="h-[6vh] w-[85vw] mt-5 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
