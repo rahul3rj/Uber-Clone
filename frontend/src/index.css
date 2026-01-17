@@ -9,6 +9,26 @@
   font-family: "UberMoveBold";
   src: url("./font/UberMoveBold.otf") format("opentype");
 }
+@font-face {
+  font-family: "UberMoveRegular";
+  src: url("./font/UberMove-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "UberText";
+  src: url("./font/UberMoveText-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "UberTextMedium";
+  src: url("./font/UberMoveText-Medium.woff2") format("woff2");
+}
+
+.uber-move { font-family: "UberMove", sans-serif; }
+.uber-move-bold { font-family: "UberMoveBold", sans-serif; }
+.uber-move-regular { font-family: "UberMoveRegular", sans-serif; }
+.uber-text { font-family: "UberText", sans-serif; }
+.uber-text-medium { font-family: "UberTextMedium", sans-serif; }
+
+
 
 .poppins-thin {
   font-family: "Poppins", sans-serif;
@@ -117,3 +137,40 @@
   font-weight: 900;
   font-style: italic;
 }
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and legacy Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;            /* Chrome, Safari */
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Toggle Button */
+/* 
+<button
+            onClick={() => setIsToggleOn(!isToggleOn)}
+            className={`h-[3vh] w-[6vh] rounded-full flex items-center transition-all duration-300 ease-in-out cursor-pointer shadow-md hover:shadow-lg ${isToggleOn ? 'bg-green-500' : 'bg-zinc-300'}`}
+          >
+            <span
+              className={`h-[2.5vh] w-[2.5vh] rounded-full bg-white shadow-md transition-transform duration-300 ease-in-out ${isToggleOn ? 'translate-x-[2.8vh]' : 'translate-x-1'}`}
+            ></span>
+          </button> */
+
+/* Hide scrollbar but keep scrolling */

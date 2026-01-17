@@ -11,6 +11,11 @@ import UserProtectWrapper from "./pages/UserProtectWrapper.jsx";
 import CaptainProtectWrapper from "./pages/CaptainProtectWrapper.jsx";
 import UserLogout from "./pages/UserLogout.jsx";
 import CaptainHome from "./pages/CaptainHome.jsx";
+import RideSelection from "./pages/RideSelection.jsx";
+import CaptainRideDetail from "./pages/CaptainRideDetail.jsx";
+import PickupLocation from "./pages/PickupLocation.jsx";
+
+
 
 const App = () => {
   const ans = useContext(UserDataContext);
@@ -27,6 +32,9 @@ const App = () => {
         <Route path="/Home" element={<UserProtectWrapper><Home /></UserProtectWrapper>} />
         <Route path="/user/logout" element={<UserProtectWrapper><UserLogout /></UserProtectWrapper>} />
         <Route path="/CaptainHome" element={<CaptainProtectWrapper><CaptainHome /></CaptainProtectWrapper>} />
+        <Route path="/CaptainRideDetail" element={<CaptainProtectWrapper><CaptainRideDetail /></CaptainProtectWrapper>} />
+        <Route path="/PickupLocation" element={<CaptainProtectWrapper><PickupLocation /></CaptainProtectWrapper>} />
+        <Route path="/RideSelection" element={<RideSelection />} />
       </Routes>
     </div>
   );
