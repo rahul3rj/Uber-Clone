@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
+const { body, validationResult, query, param } = require('express-validator');
 const rideController = require('../controllers/ride.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 
@@ -12,5 +12,17 @@ router.post('/create',
     rideController.createRide,
 )
 
+router.get('/fare', 
+    authMiddleware.authUser,
+    query('pickup').isString().isLength({ min: 3 }).withMessage('Pickup address is not valid'),
+    query('destination').isString().isLength({ min: 3 }).withMessage('Destination address is not valid'),
+    rideController.getFare,
+)
+
+router.get('/:id',
+    authMiddleware.authUser,
+    param('id').isString().isLength({ min: 1 }).withMessage('Ride id is required'),
+    rideController.getRideById,
+)
 
 module.exports = router;

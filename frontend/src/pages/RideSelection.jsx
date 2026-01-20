@@ -1,14 +1,58 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import BottomSlider from '../components/BottomSlider';
+import axios from 'axios';
+import { SocketContext } from '../context/SocketContext.jsx';
+import { useLocation, useNavigate } from 'react-router-dom';
+import Chat from './Chat.jsx';
 
 const RideSelection = () => {
+    const { sendMessage, receiveMessage, off } = useContext(SocketContext);
+    const location = useLocation();
+    const navigate = useNavigate();
+    const pickup = location.state?.pickup || '';
+    const destination = location.state?.destination || '';
+    const [currentRideId, setCurrentRideId] = useState(null);
     const [sliderOpen, setSliderOpen] = useState(false);
+    const [fares, setFares] = useState(null);
+    const [fareLoading, setFareLoading] = useState(false);
+    const [fareError, setFareError] = useState('');
+    const [rideOtp, setRideOtp] = useState('');
+    const [duration, setDuration] = useState('');
+    const [acceptedCaptain, setAcceptedCaptain] = useState(null);
+
+    const handleConfirmRide = async () => {
+      if (!pickup || !destination) return;
+      if (currentRideId) { setFareError('Cancel the current ride to request a new one'); return; }
+      if (selected === null) { setFareError('Please select a ride type'); return; }
+      const vehicleType = ['motorcycle','auto','car'][selected];
+      const token = localStorage.getItem('user');
+      try {
+        const res = await axios.post(`${import.meta.env.VITE_BASE_URL}/rides/create`, {
+          pickup,
+          destination,
+          vehicleType,
+        }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        const newId = res.data?.ride?._id || null;
+        console.log('Ride created:', res.data?.ride);
+        setCurrentRideId(newId);
+        const otp = res.data?.ride?.otp || '';
+        setRideOtp(otp);
+        localStorage.setItem('currentRide', JSON.stringify({ id: newId, pickup, destination, stage: 'loading', otp }));
+        setSliderStage('loading');
+      } catch (err) {
+        console.log(err);
+        setFareError('Unable to create ride');
+      }
+    };
     const [selected, setSelected] = useState(null);
     const [sliderStage, setSliderStage] = useState('ride');
-    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingProgress, setLoadingProgress] = useState(0); 
     const LOADING_DURATION_MS = 10000;
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [paymentOpen, setPaymentOpen] = useState(false);
+    const [chatOpen, setChatOpen] = useState(false);
     const paymentIcons = {
       cash: "https://tb-static.uber.com/prod/wallet/icons_v2/cash_3x.png",
       upi: "https://tb-static.uber.com/prod/wallet/icons_v2/qr_3x.png",
@@ -20,14 +64,23 @@ const RideSelection = () => {
       "https://d1a3f4spazzrp4.cloudfront.net/car-types/haloProductImages/v1.1/TukTuk_Green_v1.png",
       "https://d1a3f4spazzrp4.cloudfront.net/car-types/haloProductImages/Hatchback.png",
     ];
-    const selectedImageSrc = selected !== null ? rideImages[selected] : "";
+    const vehicleImageMap = { motorcycle: rideImages[0], auto: rideImages[1], car: rideImages[2] };
+    const selectedImageSrc = acceptedCaptain ? vehicleImageMap[acceptedCaptain?.vehicle?.vehicleType] : (selected !== null ? rideImages[selected] : null);
 
     useEffect(() => {
       if (sliderStage === 'loading') {
-        const id = setTimeout(() => setSliderStage('details'), LOADING_DURATION_MS);
+        const id = setTimeout(() => {
+          if (currentRideId) {
+            sendMessage('ride:cancel', { rideId: currentRideId, by: 'system' });
+            localStorage.removeItem('currentRide');
+            setAcceptedCaptain(null);
+            setCurrentRideId(null);
+          }
+          setSliderStage('ride');
+        }, LOADING_DURATION_MS);
         return () => clearTimeout(id);
       }
-    }, [sliderStage]);
+    }, [sliderStage, currentRideId, sendMessage]);
 
     useEffect(() => {
       if (sliderStage === 'loading') {
@@ -41,13 +94,89 @@ const RideSelection = () => {
             clearInterval(interval);
           }
         }, 100);
-        return () => clearInterval(interval);
+        return () => clearTimeout(interval);
       } else if (sliderStage === 'details') {
         setLoadingProgress(100);
       } else {
         setLoadingProgress(0);
       }
     }, [sliderStage]);
+
+    useEffect(() => {
+      const token = localStorage.getItem('user');
+      if (!pickup || !destination) return;
+      let cancelled = false;
+      setFareLoading(true);
+      setFareError('');
+      axios.get(`${import.meta.env.VITE_BASE_URL}/rides/fare`, {
+        params: { pickup, destination },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      }).then((res) => {
+        if (cancelled) return;
+        setFares(res.data?.fare || null);
+      }).catch(() => {
+        if (cancelled) return;
+        setFareError('Unable to fetch fare');
+      }).finally(() => {
+        if (!cancelled) setFareLoading(false);
+      });
+      return () => { cancelled = true; };
+    }, [pickup, destination]);
+
+    useEffect(() => {
+      receiveMessage('ride:accepted', (data) => {
+        const id = data?.rideId || null;
+        setCurrentRideId(id);
+        setAcceptedCaptain(data?.captain || null);
+        setSliderStage('details');
+        const saved = JSON.parse(localStorage.getItem('currentRide') || '{}');
+        localStorage.setItem('currentRide', JSON.stringify({ ...saved, id, stage: 'details', acceptedCaptain: data?.captain || null }));
+      });
+      receiveMessage('ride:cancelled', (payload) => {
+        const id = payload?.rideId;
+        if (id) { try { localStorage.removeItem(`chat:${id}`) } catch (e) {} }
+        localStorage.removeItem('currentRide');
+        setSliderStage('ride');
+        setAcceptedCaptain(null);
+        setCurrentRideId(null);
+      });
+      const chatHandler = (m) => {
+        if (!m?.rideId) return;
+        const key = `chat:${m.rideId}`;
+        try {
+          const prev = JSON.parse(localStorage.getItem(key) || '[]');
+          const next = Array.isArray(prev) ? [...prev, m] : [m];
+          localStorage.setItem(key, JSON.stringify(next));
+        } catch (e) {}
+      };
+      receiveMessage('chat:message', chatHandler);
+      return () => { off('chat:message', chatHandler); };
+    }, [receiveMessage, off]);
+
+    useEffect(() => {
+      const rs = location.state?.returnStage;
+      const rid = location.state?.rideId;
+      if (rs) setSliderStage(rs);
+      if (rid) setCurrentRideId(rid);
+      const savedRaw = localStorage.getItem('currentRide');
+      if (savedRaw) {
+        try {
+          const saved = JSON.parse(savedRaw);
+          if (saved?.id) {
+            setCurrentRideId(saved.id);
+            setRideOtp(saved.otp || '');
+            setAcceptedCaptain(saved.acceptedCaptain || null);
+            setSliderStage(saved.stage || 'details');
+            sendMessage('ride:rejoin', { rideId: saved.id });
+            const token = localStorage.getItem('user');
+            axios.get(`${import.meta.env.VITE_BASE_URL}/rides/${saved.id}`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+              .then((res) => {
+                setAcceptedCaptain(res.data?.ride?.captain || saved.acceptedCaptain || null);
+              }).catch(() => {});
+          }
+        } catch (e) {}
+      }
+    }, []);
   return (
     <div className="h-screen w-full flex items-center justify-center overflow-hidden uber-move">
       <div className="h-screen w-full flex flex-col items-center justify-start relative">
@@ -85,6 +214,7 @@ const RideSelection = () => {
             {sliderStage === "ride" && (
               <div className="h-[50vh] w-full flex flex-col items-center justify-start">
                 <h1 className="text-lg uber-text-medium my-2">Choose a Ride</h1>
+                {fareError && <p className="text-sm uber-text text-red-600">{fareError}</p>}
                 <div className="w-full h-[2px] bg-black/10"></div>
                 <div className="h-full w-full flex flex-col items-center justify-start my-2 gap-3">
                   <div
@@ -108,11 +238,11 @@ const RideSelection = () => {
                         </span>
                       </h1>
                       <p className="text-sm uber-text text-zinc-500">
-                        8:00 AM . 3 min
+                        {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} . 2 min
                       </p>
                     </div>
                     <div className="h-[5vh] flex-initial items-center justify-center">
-                      <h1 className="text-md uber-text-medium">₹80.99</h1>
+                      <h1 className="text-md uber-text-medium">{fareLoading ? '…' : (fares?.motorcycle ? `₹${fares.motorcycle}` : '—')}</h1>
                     </div>
                   </div>
                   <div
@@ -136,11 +266,11 @@ const RideSelection = () => {
                         </span>
                       </h1>
                       <p className="text-sm uber-text text-zinc-500">
-                        8:00 AM . 3 min
+                        {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} . 3 min
                       </p>
                     </div>
                     <div className="h-[5vh] flex-initial items-center justify-center">
-                      <h1 className="text-md uber-text-medium">₹112.99</h1>
+                      <h1 className="text-md uber-text-medium">{fareLoading ? '…' : (fares?.auto ? `₹${fares.auto}` : '—')}</h1>
                     </div>
                   </div>
                   <div
@@ -164,11 +294,11 @@ const RideSelection = () => {
                         </span>
                       </h1>
                       <p className="text-sm uber-text text-zinc-500">
-                        8:00 AM . 3 min
+                        {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} . 5 min
                       </p>
                     </div>
                     <div className="h-[5vh] flex-initial items-center justify-center">
-                      <h1 className="text-md uber-text-medium">₹80.99</h1>
+                      <h1 className="text-md uber-text-medium">{fareLoading ? '…' : (fares?.car ? `₹${fares.car}` : '—')}</h1>
                     </div>
                   </div>
                 </div>
@@ -196,7 +326,7 @@ const RideSelection = () => {
                       Meet at the pickup point
                     </h1>
                   </div>
-                  <div className="w-[5vh] h-[5vh] flex items-center justify-center bg-zinc-100 rounded-md cursor-pointer">
+                  <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }}  className="w-[5vh] h-[5vh] flex items-center justify-center bg-zinc-100 rounded-md cursor-pointer">
                     <i className="ri-more-2-fill text-2xl text-black/50 rotate-90"></i>
                   </div>
                 </div>
@@ -221,16 +351,16 @@ const RideSelection = () => {
                   </h1>
                   <div className="h-[3vh] w-[30vw] flex items-center justify-between">
                     <div className="h-[3vh] w-[3vh] flex items-center justify-center bg-blue-900 rounded-md">
-                      <h1 className="text-sm uber-text-medium text-white">1</h1>
+                      <h1 className="text-sm uber-text-medium text-white">{rideOtp?.[0] ?? '•'}</h1>
                     </div>
                     <div className="h-[3vh] w-[3vh] flex items-center justify-center bg-blue-900 rounded-md">
-                      <h1 className="text-sm uber-text-medium text-white">2</h1>
+                      <h1 className="text-sm uber-text-medium text-white">{rideOtp?.[1] ?? '•'}</h1>
                     </div>
                     <div className="h-[3vh] w-[3vh] flex items-center justify-center bg-blue-900 rounded-md">
-                      <h1 className="text-sm uber-text-medium text-white">3</h1>
+                      <h1 className="text-sm uber-text-medium text-white">{rideOtp?.[2] ?? '•'}</h1>
                     </div>
                     <div className="h-[3vh] w-[3vh] flex items-center justify-center bg-blue-900 rounded-md">
-                      <h1 className="text-sm uber-text-medium text-white">4</h1>
+                      <h1 className="text-sm uber-text-medium text-white">{rideOtp?.[3] ?? '•'}</h1>
                     </div>
                   </div>
                 </div>
@@ -244,7 +374,7 @@ const RideSelection = () => {
                       Meet at the pickup point
                     </h1>
                   </div>
-                  <div className="w-[5vh] h-[5vh] flex items-center justify-center bg-zinc-100 rounded-md cursor-pointer">
+                  <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }} className="w-[5vh] h-[5vh] flex items-center justify-center bg-zinc-100 rounded-md cursor-pointer">
                     <i className="ri-more-2-fill text-2xl text-black/50 rotate-90"></i>
                   </div>
                 </div>
@@ -261,29 +391,29 @@ const RideSelection = () => {
                           </div>
                         </div>
                         <div className='h-[8vh] w-[8vh] flex items-center justify-center absolute left-5 z-10'>
-                          <img src={selectedImageSrc} alt="" className='h-full w-full object-cover' />
+                          {selectedImageSrc && (<img src={selectedImageSrc} alt="" className='h-full w-full object-cover' />)}
                         </div>
                       </div>
                       <div className='h-full w-[50vw] flex flex-col items-end justify-center'>
                         <h1 className="text-md uber-move-bold">
-                          RJ14XS7777
+                          {acceptedCaptain?.vehicle?.plate || '—'}
                         </h1>
                         <p className="text-xs uber-text text-zinc-600 font-[600]">
-                          Grey SUV
+                          {acceptedCaptain?.vehicle?.color && acceptedCaptain?.vehicle?.vehicleType ? `${acceptedCaptain.vehicle.color} ${acceptedCaptain.vehicle.vehicleType}` : '—'}
                         </p>
                       </div>
                     </div>
                     <div className='h-[2vh] w-full flex items-center justify-between'>
                       <p className="text-xs uber-text text-zinc-600 font-[600]">
-                        Ajay Kumar
+                        {`${acceptedCaptain?.fullname?.firstname || ''} ${acceptedCaptain?.fullname?.lastname || ''}`.trim() || '—'}
                       </p>
                       <p className="text-xs uber-text text-zinc-600 font-[600]">
-                        500 Trips
+                        —
                       </p>
                     </div>
                   </div>
                   <div className='w-full h-[40%] flex items-center justify-between'>
-                    <div className='h-[5vh] w-[30vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
+                    <div onClick={() => { if (!currentRideId) return; setChatOpen(true); }} className='h-[5vh] w-[30vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
                       <i className="ri-message-fill text-black"></i>
                       <h1 className="text-sm uber-text-medium text-black">
                         Send a message
@@ -292,7 +422,7 @@ const RideSelection = () => {
                     <div className='h-[5vh] w-[5vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
                       <i className="ri-phone-fill text-black"></i>
                     </div>
-                    <div className='h-[5vh] w-[5vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
+                    <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }} className='h-[5vh] w-[5vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
                       <i className="ri-more-2-fill text-2xl text-black/50 rotate-90"></i>
                     </div>
                   </div>
@@ -316,7 +446,7 @@ const RideSelection = () => {
             </div>
           </div>
           <button
-            onClick={() => setSliderStage("loading")}
+            onClick={handleConfirmRide}
             className="w-[80%] h-[7vh] mb-2 rounded-md bg-black text-white text-md hover:bg-zinc-800 transition-all duration-200 cursor-pointer"
           >
             {sliderStage === 'details' ? 'Request another ride' : 'Confirm Ride'}
@@ -351,6 +481,14 @@ const RideSelection = () => {
             </div>
           )}
         </div>
+      {chatOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setChatOpen(false)}></div>
+          <div className="relative z-[70] w-full max-w-md bg-white shadow-lg">
+            <Chat rideId={currentRideId} role={'user'} pickup={pickup} destination={destination} returnStage={sliderStage} onClose={() => setChatOpen(false)} />
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

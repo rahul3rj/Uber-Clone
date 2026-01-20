@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import BottomSlider from "../components/BottomSlider";
 import LocationSearchPanel from "../components/LocationSearchPanel";
 import RideSelection from "../pages/RideSelection";
@@ -8,6 +9,8 @@ const Home = () => {
   const [destination, setDestination] = useState("");
   const [sliderOpen, setSliderOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [activeField, setActiveField] = useState('pickup');
+  const navigate = useNavigate();
   const submitHandler = (e) => {
     e.preventDefault();
   };
@@ -71,8 +74,10 @@ const Home = () => {
                       <div className="h-9 w-1 bg-black absolute left-1/2 -translate-x-1/2 -bottom-6 rounded-full"></div>
                     </div>
                     <input
+                      onFocus={() => { setActiveField('pickup'); setSliderOpen(true); }}
                       onChange={(e) => {
                         setPickup(e.target.value);
+                        setSliderOpen(true);
                       }}
                       value={pickup}
                       type="text"
@@ -87,8 +92,10 @@ const Home = () => {
                       </div>
                     </div>
                     <input
+                      onFocus={() => { setActiveField('destination'); setSliderOpen(true); }}
                       onChange={(e) => {
                         setDestination(e.target.value);
+                        setSliderOpen(true);
                       }}
                       value={destination}
                       type="text"
@@ -101,16 +108,23 @@ const Home = () => {
                       sliderOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
                     }`}
                   >
-                    {/* // hidden because it is not used in the current version of the app */}
+                    {/* suggestions panel */}
                     <LocationSearchPanel
                       selected={selected}
                       setSelected={setSelected}
+                      searchText={activeField === 'pickup' ? pickup : destination}
+                      onSelectSuggestion={(item) => {
+                        const text = item?.address || item?.description || item?.name || '';
+                        if (activeField === 'pickup') setPickup(text);
+                        else setDestination(text);
+                      }}
                     />
                   </div>
                   <div className="h-[5vh] w-full flex items-center justify-center">
                     <button
                       onClick={() => {
-                        window.location.href = "/RideSelection";
+                        if (!pickup || !destination) return;
+                        navigate('/RideSelection', { state: { pickup, destination } });
                       }}
                       className="h-[5vh] w-full text-white bg-black px-5 rounded-md uber-text font-[600] hover:bg-zinc-800 transition-all duration-200 cursor-pointer"
                     >

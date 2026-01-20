@@ -1,11 +1,47 @@
-import React from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { SocketContext } from "../context/SocketContext.jsx";
+import Chat from './Chat.jsx';
 
 const CaptainRideDetail = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { sendMessage, receiveMessage, off } = useContext(SocketContext);
 
   const acceptedRide = state?.acceptedRide;
+  const rideId = acceptedRide?.id;
+  const [chatOpen, setChatOpen] = useState(false);
+
+  useEffect(() => {
+    const cancelHandler = (payload) => {
+      if (!payload || payload.rideId !== rideId) return;
+      try { localStorage.removeItem(`chat:${rideId}`) } catch (e) {}
+      navigate('/CaptainHome');
+    };
+    receiveMessage('ride:cancelled', cancelHandler);
+    const completedHandler = (payload) => {
+      if (!payload || payload.rideId !== rideId) return;
+      try { localStorage.removeItem(`chat:${rideId}`) } catch (e) {}
+      navigate('/CaptainHome');
+    };
+    receiveMessage('ride:completed', completedHandler);
+    return () => { off('ride:cancelled', cancelHandler); off('ride:completed', completedHandler); };
+  }, [rideId, receiveMessage, off, navigate]);
+
+  useEffect(() => {
+    if (!rideId) return;
+    const chatHandler = (m) => {
+      if (!m?.rideId || m.rideId !== rideId) return;
+      const key = `chat:${rideId}`;
+      try {
+        const prev = JSON.parse(localStorage.getItem(key) || '[]');
+        const next = Array.isArray(prev) ? [...prev, m] : [m];
+        localStorage.setItem(key, JSON.stringify(next));
+      } catch (e) {}
+    };
+    receiveMessage('chat:message', chatHandler);
+    return () => off('chat:message', chatHandler);
+  }, [rideId, receiveMessage, off]);
 
   // Safety guard
   if (!acceptedRide) {
@@ -17,7 +53,7 @@ const CaptainRideDetail = () => {
       <div className="h-screen w-full flex flex-col items-center justify-start relative">
         <div className="h-[7vh] w-full flex items-center justify-center px-5 border-b border-b-zinc-300">
           <button
-            onClick={() => navigate("/CaptainHome")}
+            onClick={() => { sendMessage('ride:cancel', { rideId: acceptedRide.id, by: 'captain' }); navigate('/CaptainHome'); }}
             className="text-black text-md uber-text font-[600] cursor-pointer transition-all duration-300 ease-in-out absolute left-5"
           >
             <i className="ri-arrow-left-line text-2xl"></i>
@@ -112,16 +148,16 @@ const CaptainRideDetail = () => {
                   Call
                 </h1>
               </div>
-              <div className="h-[8vh] w-full flex flex-col items-center justify-center bg-black text-white text-sm uber-text-medium rounded-lg cursor-pointer hover:bg-zinc-700 transition-all duration-300 ease-in-out">
-                <i class="ri-message-2-fill"></i>
+              <div onClick={() => setChatOpen(true)} className="h-[8vh] w-full flex flex-col items-center justify-center bg-black text-white text-sm uber-text-medium rounded-lg cursor-pointer hover:bg-zinc-700 transition-all duration-300 ease-in-out">
+                <i className="ri-message-2-fill"></i>
                 <h1 className="text-white text-xs uber-text font-[500]">
                   Message
                 </h1>
               </div>
-              <div className="h-[8vh] w-full flex flex-col items-center justify-center bg-zinc-400 text-white text-sm uber-text-medium rounded-lg cursor-pointer hover:bg-red-500 transition-all duration-300 ease-in-out">
-                <i class="ri-delete-bin-6-fill"></i>
+              <div onClick={() => { sendMessage('ride:cancel', { rideId: acceptedRide.id, by: 'captain' }); navigate('/CaptainHome'); }} className="h-[8vh] w-full flex flex-col items-center justify-center bg-zinc-400 text-white text-sm uber-text-medium rounded-lg cursor-pointer hover:bg-red-500 transition-all duration-300 ease-in-out">
+                <i className="ri-delete-bin-6-fill"></i>
                 <h1 className="text-white text-xs uber-text font-[500]">
-                  Cancle
+                  Cancel
                 </h1>
               </div>
 
@@ -138,6 +174,14 @@ const CaptainRideDetail = () => {
                 Go To Pickup Location
               </h1>
             </button>
+          {chatOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40" onClick={() => setChatOpen(false)}></div>
+              <div className="relative z-[70] w-full max-w-md bg-white shadow-lg">
+                <Chat rideId={rideId} role={'captain'} onClose={() => setChatOpen(false)} />
+              </div>
+            </div>
+          )}
           </div>
         </div>
       </div>

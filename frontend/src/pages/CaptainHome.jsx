@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import BottomSlider from '../components/BottomSlider'
 import { useNavigate } from 'react-router-dom';
+import { SocketContext } from '../context/SocketContext.jsx'
+import { CaptainDataContext } from '../context/CaptainContext.jsx'
 
 
 
@@ -75,11 +77,42 @@ const Rides = [
 const CaptainHome = () => {
   const [sliderOpen, setSliderOpen] = useState(false);
   const [isToggleOn, setIsToggleOn] = useState(false);
+  const [rides, setRides] = useState(Rides);
+  const { sendMessage, receiveMessage, off } = useContext(SocketContext);
+  const { captain } = useContext(CaptainDataContext);
   const navigate = useNavigate();
 
   const submitHandler = (e) => {
     e.preventDefault();
   };
+
+  useEffect(() => {
+    const handler = (data) => {
+      const n = data?.userName?.firstname ? `${data.userName.firstname} ${data.userName.lastname || ''}`.trim() : 'New Ride';
+      const mapped = {
+        id: data.rideId,
+        name: n,
+        fare: data.fare,
+        distance: data.distance || 0,
+        pickup: data.pickup,
+        dropoff: data.destination,
+        rideFare: data.fare,
+      };
+      setRides((prev) => prev.some((r) => r.id === mapped.id) ? prev : [mapped, ...prev]);
+    };
+    receiveMessage('ride:offer', handler);
+    return () => off('ride:offer', handler);
+  }, [receiveMessage, off]);
+
+  useEffect(() => {
+    const cancelHandler = (payload) => {
+      const id = payload?.rideId;
+      if (!id) return;
+      setRides((prev) => prev.filter((r) => r.id !== id));
+    };
+    receiveMessage('ride:cancelled', cancelHandler);
+    return () => off('ride:cancelled', cancelHandler);
+  }, [receiveMessage, off]);
 
   return (
     <div className="h-screen w-full flex items-center justify-center overflow-hidden">
@@ -127,7 +160,7 @@ const CaptainHome = () => {
                   {isToggleOn ? "Online" : "Offline"}
                 </h1>
                 <button
-                  onClick={() => setIsToggleOn(!isToggleOn)}
+                  onClick={() => { const next = !isToggleOn; setIsToggleOn(next); sendMessage('captain:availability', { captainId: captain?._id, available: next }); }}
                   className={`h-[3vh] w-[6vh] rounded-full flex items-center transition-all duration-300 ease-in-out cursor-pointer shadow-md hover:shadow-lg  ${
                     isToggleOn ? "bg-[#3B864E]" : "bg-zinc-300"
                   }`}
@@ -145,7 +178,7 @@ const CaptainHome = () => {
                 </h1>
               </div>
               <div className="w-full flex-1 overflow-y-auto no-scrollbar mt-5 gap-3 flex flex-col items-center justify-start">
-                {Rides.map((ride) => (
+                {rides.map((ride) => (
                   <div
                     key={ride.id}
                     className="w-full flex flex-col items-start justify-start rounded-md transition-all ease-in-out duration-300 cursor-pointer bg-white border border-zinc-300 hover:border-zinc-500 "
@@ -195,12 +228,8 @@ const CaptainHome = () => {
                         <button
                           onClick={() => {
                             if (!isToggleOn) return;
-
-                            navigate("/CaptainRideDetail", {
-                              state: {
-                                acceptedRide: ride,
-                              },
-                            });
+                            sendMessage('ride:accept', { rideId: ride.id, captainId: captain?._id });
+                            navigate("/CaptainRideDetail", { state: { acceptedRide: ride } });
                           }}
                           className={`h-[4vh] w-full rounded-lg text-white text-md uber-text font-[600] cursor-pointer transition-all duration-300 ease-in-out ${
                             isToggleOn

@@ -14,7 +14,7 @@ import CaptainHome from "./pages/CaptainHome.jsx";
 import RideSelection from "./pages/RideSelection.jsx";
 import CaptainRideDetail from "./pages/CaptainRideDetail.jsx";
 import PickupLocation from "./pages/PickupLocation.jsx";
-
+import Chat from "./pages/Chat.jsx";
 
 
 const App = () => {
@@ -34,6 +34,8 @@ const App = () => {
         <Route path="/CaptainHome" element={<CaptainProtectWrapper><CaptainHome /></CaptainProtectWrapper>} />
         <Route path="/CaptainRideDetail" element={<CaptainProtectWrapper><CaptainRideDetail /></CaptainProtectWrapper>} />
         <Route path="/PickupLocation" element={<CaptainProtectWrapper><PickupLocation /></CaptainProtectWrapper>} />
+        <Route path="/captain/chat" element={<CaptainProtectWrapper><Chat /></CaptainProtectWrapper>} />
+        <Route path="/user/chat" element={<UserProtectWrapper><Chat /></UserProtectWrapper>} />
         <Route path="/RideSelection" element={<RideSelection />} />
       </Routes>
     </div>

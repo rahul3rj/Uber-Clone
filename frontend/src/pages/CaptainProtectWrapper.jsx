@@ -2,11 +2,13 @@ import React, { useEffect, useContext, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CaptainDataContext } from '../context/CaptainContext.jsx'
 import axios from 'axios';
+import { SocketContext } from '../context/SocketContext.jsx';
 
 const CaptainProtectWrapper = ({ children }) => {
   const token = localStorage.getItem("captain")
   const navigate = useNavigate() 
   const {captain, setCaptain} = useContext(CaptainDataContext);
+  const { join } = useContext(SocketContext);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => { 
@@ -19,7 +21,8 @@ const CaptainProtectWrapper = ({ children }) => {
       }
     }).then((response) => {
       if(response.status === 200){
-        setCaptain(response.data);
+        join(response.data.captain?._id, 'captain');
+        setCaptain(response.data.captain);
         setIsLoading(false);
       }
     }).catch((error) => {
