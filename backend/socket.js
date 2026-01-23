@@ -44,6 +44,11 @@ function initializeSocket(server) {
                 const captainSocketId = captain?.socketId;
                 if (userSocketId) io.to(userSocketId).emit('ride:accepted', { rideId: String(ride._id), captain: { _id: String(captain._id), fullname: captain.fullname, vehicle: captain.vehicle } });
                 if (captainSocketId) io.to(captainSocketId).emit('ride:accepted', { rideId: String(ride._id) });
+                const allCaptains = await captainModel.find({ socketId: { $ne: null } }, { socketId: 1 });
+                allCaptains.forEach((c) => {
+                    const sid = c.socketId;
+                    if (sid && sid !== captainSocketId) io.to(sid).emit('ride:accepted', { rideId: String(ride._id) });
+                });
                 const room = `ride:${rideId}`;
                 if (userSocketId) io.sockets.sockets.get(userSocketId)?.join(room);
                 if (captainSocketId) io.sockets.sockets.get(captainSocketId)?.join(room);
@@ -60,6 +65,85 @@ function initializeSocket(server) {
         socket.on('ride:rejoin', ({ rideId }) => {
             const room = `ride:${rideId}`;
             socket.join(room);
+        });
+
+        socket.on('ride:start', async ({ rideId, otp }) => {
+            try {
+                const ride = await rideModel.findById(rideId).select('+otp');
+                if (!ride) return;
+                const room = `ride:${rideId}`;
+                if (String(ride.otp) !== String(otp)) {
+                    io.to(room).emit('ride:otp:invalid', { rideId });
+                    return;
+                }
+                await rideModel.findByIdAndUpdate(rideId, { status: 'ongoing' });
+                io.to(room).emit('ride:ongoing', { rideId });
+            } catch (error) {
+                console.log('Error starting ride', error);
+            }
+        });
+
+        socket.on('ride:complete', async ({ rideId }) => {
+            try {
+                await rideModel.findByIdAndUpdate(rideId, { status: 'completed' });
+                const room = `ride:${rideId}`;
+                io.to(room).emit('ride:completed', { rideId });
+            } catch (error) {
+                console.log('Error completing ride', error);
+            }
+        });
+
+        socket.on('call:initiate', ({ rideId, from }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('call:ring', { rideId, from });
+        });
+
+        socket.on('call:accept', ({ rideId, by }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('call:accept', { rideId, by });
+        });
+
+        socket.on('call:decline', ({ rideId, by }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('call:decline', { rideId, by });
+        });
+
+        socket.on('call:end', ({ rideId, by }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('call:end', { rideId, by });
+        });
+
+        socket.on('webrtc:offer', ({ rideId, sdp }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('webrtc:offer', { rideId, sdp });
+        });
+        socket.on('webrtc:answer', ({ rideId, sdp }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('webrtc:answer', { rideId, sdp });
+        });
+        socket.on('webrtc:candidate', ({ rideId, candidate }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('webrtc:candidate', { rideId, candidate });
+        });
+
+        socket.on('call:initiate', ({ rideId, from }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('call:ring', { rideId, from });
+        });
+
+        socket.on('call:accept', ({ rideId, by }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('call:accept', { rideId, by });
+        });
+
+        socket.on('call:decline', ({ rideId, by }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('call:decline', { rideId, by });
+        });
+
+        socket.on('call:end', ({ rideId, by }) => {
+            const room = `ride:${rideId}`;
+            io.to(room).emit('call:end', { rideId, by });
         });
 
         socket.on('ride:cancel', async ({ rideId, by }) => {

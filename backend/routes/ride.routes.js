@@ -25,4 +25,9 @@ router.get('/:id',
     rideController.getRideById,
 )
 
+router.post('/cancel-open',
+    authMiddleware.authUser,
+    rideController.cancelOpenRide,
+)
+
 module.exports = router;

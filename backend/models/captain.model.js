@@ -56,6 +56,9 @@ const captainSchema = new mongoose.Schema({
             enum: ["motorcycle", "car", "auto"],
         },
     },
+    profileImage: {
+        type: String,
+    },
     location:{
         lat:{
             type: Number,

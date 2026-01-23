@@ -20,6 +20,8 @@ router.post('/login', [
 ], captainController.loginCaptain);
 
 router.get('/profile', authMiddleware.authCaptain, captainController.getCaptainProfile);
+router.post('/profile/image', authMiddleware.authCaptain, captainController.setCaptainProfileImage);
+router.get('/stats/trips', authMiddleware.authCaptain, captainController.getCaptainTripsCount);
 
 router.get('/logout', authMiddleware.authCaptain, captainController.logoutCaptain);
 

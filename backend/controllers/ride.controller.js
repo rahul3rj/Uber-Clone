@@ -3,6 +3,7 @@ const { validationResult } = require('express-validator');
 const captainModel = require('../models/captain.model');
 const { emitToSocketIds } = require('../socket');
 const rideModel = require('../models/ride.model');
+const userModel = require('../models/user.model');
 
 module.exports.createRide = async (req, res) => {
     const errors = validationResult(req);
@@ -59,6 +60,30 @@ module.exports.getRideById = async (req, res) => {
         const ride = await rideModel.findById(id).populate('captain');
         if(!ride) return res.status(404).json({ errors: [{ msg: 'Ride not found' }] });
         res.status(200).json({ ride });
+    } catch (error) {
+        res.status(400).json({ errors: [{ msg: error.message }] });
+    }
+}
+
+module.exports.cancelOpenRide = async (req, res) => {
+    try {
+        const rides = await rideModel.find({ user: req.user._id, status: { $in: ['pending','accepted','ongoing'] } });
+        if (!rides.length) return res.status(200).json({ cancelled: 0 });
+        const allCaptains = await captainModel.find({ socketId: { $ne: null } }, { socketId: 1 });
+        let cancelled = 0;
+        for (const r of rides) {
+            const ride = await rideModel.findByIdAndUpdate(r._id, { status: 'cancelled' }, { new: true });
+            if (!ride) continue;
+            cancelled += 1;
+            const user = await userModel.findById(ride.user);
+            const captain = ride.captain ? await captainModel.findById(ride.captain) : null;
+            const socketIds = [];
+            if (user?.socketId) socketIds.push(user.socketId);
+            if (captain?.socketId) socketIds.push(captain.socketId);
+            socketIds.push(...allCaptains.map(c => c.socketId).filter(Boolean));
+            emitToSocketIds('ride:cancelled', { rideId: String(ride._id), by: 'system' }, socketIds);
+        }
+        res.status(200).json({ cancelled });
     } catch (error) {
         res.status(400).json({ errors: [{ msg: error.message }] });
     }

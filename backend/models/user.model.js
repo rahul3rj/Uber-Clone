@@ -26,6 +26,9 @@ const userSchema = new mongoose.Schema({
     required: true,
     select: false,
   },
+  profileImage: {
+    type: String,
+  },
   socketId:{
     type: String,
   }

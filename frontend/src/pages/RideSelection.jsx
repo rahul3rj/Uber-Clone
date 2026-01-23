@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect, useContext, useRef } from 'react'
 import BottomSlider from '../components/BottomSlider';
 import axios from 'axios';
 import { SocketContext } from '../context/SocketContext.jsx';
+import { UserDataContext } from '../context/UserContext.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Chat from './Chat.jsx';
 
@@ -11,6 +12,12 @@ const RideSelection = () => {
     const navigate = useNavigate();
     const pickup = location.state?.pickup || '';
     const destination = location.state?.destination || '';
+    const mapRef = useRef(null);
+    const mapInstanceRef = useRef(null);
+    const markerRef = useRef(null);
+    const directionsServiceRef = useRef(null);
+    const directionsRendererRef = useRef(null);
+    const [center, setCenter] = useState({ lat: (typeof location.state?.pickupLat === 'number' ? location.state.pickupLat : 37.7749), lng: (typeof location.state?.pickupLng === 'number' ? location.state.pickupLng : -122.4194) });
     const [currentRideId, setCurrentRideId] = useState(null);
     const [sliderOpen, setSliderOpen] = useState(false);
     const [fares, setFares] = useState(null);
@@ -19,6 +26,37 @@ const RideSelection = () => {
     const [rideOtp, setRideOtp] = useState('');
     const [duration, setDuration] = useState('');
     const [acceptedCaptain, setAcceptedCaptain] = useState(null);
+    const [ProfileActive, setProfileActive] = useState(false);
+
+    const loadGoogleMaps = () => {
+      return new Promise((resolve, reject) => {
+        if (window.google && window.google.maps) return resolve();
+        const existing = document.querySelector('script[data-gmaps="true"]');
+        if (existing) { existing.addEventListener('load', () => resolve()); existing.addEventListener('error', (e) => reject(e)); return; }
+        const key = import.meta.env.VITE_GOOGLE_MAPS_JS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        if (!key) { console.warn('Google Maps API key missing'); return reject(new Error('No key')); }
+        const s = document.createElement('script'); s.src = `https://maps.googleapis.com/maps/api/js?key=${key}`; s.async = true; s.defer = true; s.dataset.gmaps = 'true'; s.onload = () => resolve(); s.onerror = (e) => reject(e); document.head.appendChild(s);
+      });
+    };
+
+    useEffect(() => {
+      let map;
+      loadGoogleMaps().then(() => {
+        const google = window.google;
+        if (!mapRef.current) return;
+        map = new google.maps.Map(mapRef.current, { center, zoom: 14, disableDefaultUI: true });
+        mapInstanceRef.current = map;
+        markerRef.current = new google.maps.Marker({ position: center, map, clickable: false });
+        directionsServiceRef.current = new google.maps.DirectionsService();
+        directionsRendererRef.current = new google.maps.DirectionsRenderer({ map, preserveViewport: true });
+        const update = () => { const c = map.getCenter(); const next = { lat: c.lat(), lng: c.lng() }; setCenter(next); if (markerRef.current) markerRef.current.setPosition(next); };
+        map.addListener('idle', update);
+        if (pickup && destination) {
+          directionsServiceRef.current.route({ origin: pickup, destination, travelMode: google.maps.TravelMode.DRIVING }, (res, status) => { if (status === 'OK') directionsRendererRef.current.setDirections(res); });
+        }
+      }).catch(() => {});
+      return () => { };
+    }, []);
 
     const handleConfirmRide = async () => {
       if (!pickup || !destination) return;
@@ -49,10 +87,21 @@ const RideSelection = () => {
     const [selected, setSelected] = useState(null);
     const [sliderStage, setSliderStage] = useState('ride');
     const [loadingProgress, setLoadingProgress] = useState(0); 
-    const LOADING_DURATION_MS = 10000;
+    const LOADING_DURATION_MS = 5*10000;
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [paymentOpen, setPaymentOpen] = useState(false);
+    const [payment, setPayment] = useState(false);
+    const [paymentLocked, setPaymentLocked] = useState(false);
     const [chatOpen, setChatOpen] = useState(false);
+    const { user } = useContext(UserDataContext);
+    const [trips, setTrips] = useState(0);
+    const [callState, setCallState] = useState('idle');
+    const [incomingFrom, setIncomingFrom] = useState(null);
+    const ringStopRef = useRef(null);
+    const pcRef = useRef(null);
+    const localStreamRef = useRef(null);
+    const remoteAudioRef = useRef(null);
+    const outgoingRef = useRef(false);
     const paymentIcons = {
       cash: "https://tb-static.uber.com/prod/wallet/icons_v2/cash_3x.png",
       upi: "https://tb-static.uber.com/prod/wallet/icons_v2/qr_3x.png",
@@ -64,20 +113,36 @@ const RideSelection = () => {
       "https://d1a3f4spazzrp4.cloudfront.net/car-types/haloProductImages/v1.1/TukTuk_Green_v1.png",
       "https://d1a3f4spazzrp4.cloudfront.net/car-types/haloProductImages/Hatchback.png",
     ];
+    const rideTypesMap = { motorcycle: 2, auto: 3, car: 5 };
     const vehicleImageMap = { motorcycle: rideImages[0], auto: rideImages[1], car: rideImages[2] };
     const selectedImageSrc = acceptedCaptain ? vehicleImageMap[acceptedCaptain?.vehicle?.vehicleType] : (selected !== null ? rideImages[selected] : null);
+    const pickupMinutes = (() => { const vt = acceptedCaptain?.vehicle?.vehicleType ?? (selected !== null ? ['motorcycle','auto','car'][selected] : null); return vt ? (rideTypesMap[vt] ?? 3) : 3; })();
 
     useEffect(() => {
-      if (sliderStage === 'loading') {
+      const token = localStorage.getItem("user");
+      axios
+        .get(`${import.meta.env.VITE_BASE_URL}/users/stats/trips`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        })
+        .then((res) => setTrips(res.data?.trips || 0))
+        .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+      if (sliderStage === "loading") {
         const id = setTimeout(() => {
           if (currentRideId) {
-            sendMessage('ride:cancel', { rideId: currentRideId, by: 'system' });
-            localStorage.removeItem('currentRide');
+            sendMessage("ride:cancel", { rideId: currentRideId, by: "system" });
+            try {
+              localStorage.setItem("redirectAfterCancel", "1");
+            } catch (e) {}
+            localStorage.removeItem("currentRide");
             setAcceptedCaptain(null);
             setCurrentRideId(null);
           }
-          setSliderStage('ride');
+          setSliderStage("ride");
         }, LOADING_DURATION_MS);
+
         return () => clearTimeout(id);
       }
     }, [sliderStage, currentRideId, sendMessage]);
@@ -154,6 +219,94 @@ const RideSelection = () => {
     }, [receiveMessage, off]);
 
     useEffect(() => {
+      const completedHandler = (payload) => {
+        const id = payload?.rideId;
+        if (!id || id !== currentRideId) return;
+        setPayment(true);
+        setPaymentLocked(true);
+      };
+      receiveMessage('ride:completed', completedHandler);
+      return () => { off('ride:completed', completedHandler); };
+    }, [currentRideId, receiveMessage, off]);
+
+    const startRingtone = () => {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AC();
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      let on = false;
+      const interval = setInterval(() => {
+        on = !on;
+        gain.gain.setValueAtTime(on ? 0.2 : 0, ctx.currentTime);
+      }, 600);
+      return () => { clearInterval(interval); osc.stop(); ctx.close(); };
+    };
+
+    useEffect(() => {
+      const ringHandler = (payload) => {
+        if (!payload || payload.rideId !== currentRideId) return;
+        if (payload.from === 'user') { setCallState('outgoing'); } else { setCallState('incoming'); setIncomingFrom(payload.from || 'captain'); }
+        if (!ringStopRef.current) ringStopRef.current = startRingtone();
+      };
+      receiveMessage('call:ring', ringHandler);
+      const acceptHandler = async (payload) => { if (!payload || payload.rideId !== currentRideId) return; if (ringStopRef.current) { ringStopRef.current(); ringStopRef.current = null; } if (outgoingRef.current) { ensurePC(); await startLocal().catch(()=>{}); const offer = await pcRef.current.createOffer(); await pcRef.current.setLocalDescription(offer); sendMessage('webrtc:offer', { rideId: currentRideId, sdp: offer }); } setCallState('active'); };
+      receiveMessage('call:accept', acceptHandler);
+      const declineHandler = (payload) => { if (!payload || payload.rideId !== currentRideId) return; setCallState('idle'); if (ringStopRef.current) { ringStopRef.current(); ringStopRef.current = null; } cleanupConnections(); outgoingRef.current = false; };
+      receiveMessage('call:decline', declineHandler);
+      const endHandler = (payload) => { if (!payload || payload.rideId !== currentRideId) return; setCallState('idle'); cleanupConnections(); outgoingRef.current = false; };
+      receiveMessage('call:end', endHandler);
+      return () => { off('call:ring', ringHandler); off('call:accept', acceptHandler); off('call:decline', declineHandler); off('call:end', endHandler); if (ringStopRef.current) { ringStopRef.current(); ringStopRef.current = null; } };
+    }, [currentRideId, receiveMessage, off]);
+
+    const ensurePC = () => {
+      if (pcRef.current) return;
+      pcRef.current = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      pcRef.current.onicecandidate = (e) => { if (e.candidate) sendMessage('webrtc:candidate', { rideId: currentRideId, candidate: e.candidate }); };
+      pcRef.current.ontrack = (e) => {
+        const s = e.streams && e.streams[0] ? e.streams[0] : new MediaStream();
+        if (!e.streams || e.streams.length === 0) s.addTrack(e.track);
+        if (remoteAudioRef.current) { remoteAudioRef.current.srcObject = s; remoteAudioRef.current.play().catch(()=>{}); }
+      };
+    };
+    const startLocal = async () => {
+      if (!pcRef.current) ensurePC();
+      if (localStreamRef.current) return;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStreamRef.current = stream;
+      stream.getTracks().forEach((t) => pcRef.current.addTrack(t, stream));
+    };
+    const cleanupConnections = () => {
+      try { localStreamRef.current?.getTracks()?.forEach((t) => t.stop()); } catch (e) {}
+      if (remoteAudioRef.current) { try { remoteAudioRef.current.srcObject = null; } catch (e) {} }
+      try { pcRef.current?.close(); } catch (e) {}
+      pcRef.current = null;
+      localStreamRef.current = null;
+    };
+
+    useEffect(() => {
+      const offerHandler = async (p) => { if (!p || p.rideId !== currentRideId) return; ensurePC(); await startLocal().catch(()=>{}); await pcRef.current.setRemoteDescription(new RTCSessionDescription(p.sdp)).catch(()=>{}); const ans = await pcRef.current.createAnswer(); await pcRef.current.setLocalDescription(ans); sendMessage('webrtc:answer', { rideId: currentRideId, sdp: ans }); setCallState('active'); };
+      receiveMessage('webrtc:offer', offerHandler);
+      const answerHandler = async (p) => { if (!p || p.rideId !== currentRideId) return; if (!pcRef.current) return; await pcRef.current.setRemoteDescription(new RTCSessionDescription(p.sdp)).catch(()=>{}); setCallState('active'); };
+      receiveMessage('webrtc:answer', answerHandler);
+      const candHandler = async (p) => { if (!p || p.rideId !== currentRideId || !p.candidate) return; try { await pcRef.current?.addIceCandidate(new RTCIceCandidate(p.candidate)); } catch (e) {} };
+      receiveMessage('webrtc:candidate', candHandler);
+      return () => { off('webrtc:offer', offerHandler); off('webrtc:answer', answerHandler); off('webrtc:candidate', candHandler); };
+    }, [currentRideId, receiveMessage, off]);
+
+    useEffect(() => {
+      const redirectFlag = localStorage.getItem('redirectAfterCancel');
+      if (redirectFlag) {
+        const token = localStorage.getItem('user');
+        axios.post(`${import.meta.env.VITE_BASE_URL}/rides/cancel-open`, {}, { headers: token ? { Authorization: `Bearer ${token}` } : undefined }).catch(() => {});
+        localStorage.removeItem('redirectAfterCancel');
+        navigate('/Home');
+        return;
+      }
       const rs = location.state?.returnStage;
       const rid = location.state?.rideId;
       if (rs) setSliderStage(rs);
@@ -180,27 +333,79 @@ const RideSelection = () => {
   return (
     <div className="h-screen w-full flex items-center justify-center overflow-hidden uber-move">
       <div className="h-screen w-full flex flex-col items-center justify-start relative">
-        <div className="h-[70vh] w-full bg-white">
-          <img
-            src="/bg-map.jpeg"
-            alt=""
-            className="h-full w-full object-cover"
-          />
+        {payment && (
+            <div className="w-full h-screen bg-black/20 absolute z-99 flex flex-col items-center justify-center">
+              <div className='h-[50vh] w-[80%] bg-white rounded-md flex flex-col items-center justify-center gap-4'>
+                <div className='w-[25vh] h-[25vh] flex items-center justify-center'>
+                  <img
+                    src={paymentMethod === 'cash' ? '/payWithCash.png' : paymentMethod === 'upi' ? '/payWithUpi.png' : '/payWithGiftCard.png'}
+                    alt=""
+                    className=" w-full object-cover"
+                  />
+                </div>
+                <div className='text-2xl font-bold'>
+                  {paymentMethod === 'cash' ? 'Pay with Cash' : paymentMethod === 'upi' ? 'Pay with UPI' : 'Pay with Gift Card'}
+                </div>
+                <div className='text-md font-medium'>{paymentMethod === 'cash' ? 'Pay with cash at the destination' : paymentMethod === 'upi' ? 'Pay with UPI' : 'Pay with your gift card'}</div>
+                <div className='w-[80%] h-[5vh] flex flex-1 items-center justify-center gap-2'>
+                  {!paymentLocked && (
+                    <div onClick={() => setPayment(false)} className='w-[50%] h-[5vh] flex items-center justify-center rounded-sm bg-zinc-400 text-white cursor-pointer'>
+                      Not now
+                    </div>
+                  )}
+                  <div onClick={() => { setPayment(false); try { localStorage.removeItem('currentRide') } catch (e) {} setAcceptedCaptain(null); setCurrentRideId(null); navigate('/Home'); }} className='w-[50%] h-[5vh] flex items-center justify-center rounded-sm bg-black text-white cursor-pointer'>
+                    Done
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        <div className="h-[70vh] w-full bg-white relative">
+          <div ref={mapRef} className="h-full w-full" />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full pointer-events-none">
+            <i className="ri-map-pin-2-fill text-4xl text-red-600 drop-shadow-md"></i>
+          </div>
         </div>
-        <div className="shadow-md h-[5vh] w-[5vh] rounded-full absolute top-10 right-10 cursor-pointer">
-          <div className="h-[5vh] w-[5vh] rounded-full bg-black flex items-center justify-center overflow-hidden border border-white border-2 ">
+        <div className="shadow-md h-[5vh] w-[5vh] rounded-full top-10 right-10 cursor-pointer">
+          <div
+          onMouseEnter={() => setProfileActive(true)}
+          className="shadow-md h-[5vh] w-[5vh] rounded-full absolute top-10 right-10 cursor-pointer flex items-center justify-center gap-2"
+        >
+          <div
+            onClick={() => setProfileActive((p) => !p)}
+            className="h-[5vh] w-[5vh] rounded-full flex items-center justify-center overflow-hidden border border-white border-2 "
+          >
             <img
-              src="https://i.pinimg.com/1200x/9d/16/4e/9d164e4e074d11ce4de0a508914537a8.jpg"
+              src={user?.profileImage || "https://i.pinimg.com/1200x/9d/16/4e/9d164e4e074d11ce4de0a508914537a8.jpg"}
               alt=""
               className="h-full w-full object-cover "
             />
           </div>
+          {ProfileActive && (
+            <div className="absolute top-0 right-0 mt-[6vh] ml-0 z-50 bg-white rounded-lg shadow-lg p-4 w-56 flex flex-col items-center justify-center gap-3">
+              <div className='w-[8vh] h-[8vh] rounded-full flex items-center justify-center relative'>
+                <img
+                  src={user?.profileImage || "https://i.pinimg.com/1200x/9d/16/4e/9d164e4e074d11ce4de0a508914537a8.jpg"}
+                  alt=""
+                  className="h-full w-full object-cover rounded-full"
+                />
+                <label className='absolute -bottom-2 -right-2 bg-white rounded-full w-[30px] h-[30px] flex items-center justify-center shadow-md cursor-pointer'>
+                  <i className="ri-pencil-fill text-black text-xl"></i>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; const reader = new FileReader(); reader.onload = () => { const token = localStorage.getItem('user'); axios.post(`${import.meta.env.VITE_BASE_URL}/users/profile/image`, { imageData: String(reader.result) }, { headers: token ? { Authorization: `Bearer ${token}` } : undefined }).catch(() => {}); }; reader.readAsDataURL(f); }} />
+                </label>
+              </div>
+              <p className="text-black text-sm uber-text-medium capitalize">{`${user?.fullname?.firstname || ''} ${user?.fullname?.lastname || ''}`.trim()}</p>
+              <p className="text-zinc-600 text-xs uber-text">Trips: {trips}</p>
+              <button onClick={() => { const token = localStorage.getItem('user'); axios.get(`${import.meta.env.VITE_BASE_URL}/users/logout`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined }).then(() => { localStorage.removeItem('user'); window.location.href = '/user/login'; }).catch(() => {}); }} className="px-18 py-3 rounded-md bg-black flex items-center justify-center hover:bg-red-500 text-white text-xs">Logout <i className="ri-logout-box-line"></i></button>
+            </div>
+          )}
+        </div>
         </div>
         <div
           onClick={() => {
             window.location.href = "/Home";
           }}
-          className="h-[5vh] w-[5vh] rounded-full bg-white absolute top-10 left-7 flex items-center justify-center shadow-md hover:shadow-xl transition-all ease-in-out cursor-pointer"
+          className="h-[5vh] w-[5vh] rounded-full bg-white z-9 absolute top-10 left-7 flex items-center justify-center shadow-md hover:shadow-xl transition-all ease-in-out cursor-pointer"
         >
           <i className="ri-arrow-left-line text-xl font-bold"></i>
         </div>
@@ -326,7 +531,7 @@ const RideSelection = () => {
                       Meet at the pickup point
                     </h1>
                   </div>
-                  <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }}  className="w-[5vh] h-[5vh] flex items-center justify-center bg-zinc-100 rounded-md cursor-pointer">
+                  <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); try { localStorage.setItem('redirectAfterCancel', '1') } catch (e) {} localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }}  className="w-[5vh] h-[5vh] flex items-center justify-center bg-zinc-100 rounded-md cursor-pointer">
                     <i className="ri-more-2-fill text-2xl text-black/50 rotate-90"></i>
                   </div>
                 </div>
@@ -341,9 +546,9 @@ const RideSelection = () => {
             )}
 
             {sliderStage === "details" && (
-              <div className="h-[50vh] w-full flex flex-col items-center justify-start px-5">
+              <div className="h-[50vh] w-full flex flex-col items-center justify-start ">
                 <h1 className="text-lg uber-text-medium my-2">
-                  Pick-up in 3 min
+                  Pick-up in {pickupMinutes} min
                 </h1>
                 <div className="h-[5vh] w-full bg-blue-500 rounded-md flex items-center justify-between px-5">
                   <h1 className="text-sm uber-text-medium text-white">
@@ -374,7 +579,7 @@ const RideSelection = () => {
                       Meet at the pickup point
                     </h1>
                   </div>
-                  <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }} className="w-[5vh] h-[5vh] flex items-center justify-center bg-zinc-100 rounded-md cursor-pointer">
+                  <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); try { localStorage.setItem('redirectAfterCancel', '1') } catch (e) {} localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }} className="w-[5vh] h-[5vh] flex items-center justify-center bg-zinc-100 rounded-md cursor-pointer">
                     <i className="ri-more-2-fill text-2xl text-black/50 rotate-90"></i>
                   </div>
                 </div>
@@ -412,17 +617,17 @@ const RideSelection = () => {
                       </p>
                     </div>
                   </div>
-                  <div className='w-full h-[40%] flex items-center justify-between'>
-                    <div onClick={() => { if (!currentRideId) return; setChatOpen(true); }} className='h-[5vh] w-[30vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
+                  <div className='w-full h-[40%] flex items-center gap-1 justify-between'>
+                    <div onClick={() => { if (!currentRideId) return; setChatOpen(true); }} className='h-[5vh] w-[30vh] flex flex-1 items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
                       <i className="ri-message-fill text-black"></i>
                       <h1 className="text-sm uber-text-medium text-black">
                         Send a message
                       </h1>
                     </div>
-                    <div className='h-[5vh] w-[5vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
+                    <div onClick={() => { if (!currentRideId) return; outgoingRef.current = true; setCallState('outgoing'); sendMessage('call:initiate', { rideId: currentRideId, from: 'user' }); if (!ringStopRef.current) ringStopRef.current = startRingtone(); }} className='h-[5vh] w-[5vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
                       <i className="ri-phone-fill text-black"></i>
                     </div>
-                    <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }} className='h-[5vh] w-[5vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
+                    <div onClick={() => { if (!currentRideId) return; if (window.confirm('Cancel this ride?')) { sendMessage('ride:cancel', { rideId: currentRideId, by: 'user' }); try { localStorage.setItem('redirectAfterCancel', '1') } catch (e) {} localStorage.removeItem('currentRide'); setAcceptedCaptain(null); setCurrentRideId(null); setSliderStage('ride'); } }} className='h-[5vh] w-[5vh] flex items-center justify-center gap-2 rounded-md bg-zinc-100 cursor-pointer'>
                       <i className="ri-more-2-fill text-2xl text-black/50 rotate-90"></i>
                     </div>
                   </div>
@@ -431,8 +636,8 @@ const RideSelection = () => {
             )}
           </BottomSlider>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-[13vh] bg-white w-full flex flex-col items-center justify-center border-t-[2px] border-t-black/10">
-          <div onClick={() => setPaymentOpen(true)} className="h-[8vh] w-[80%] flex items-center justify-center cursor-pointer group">
+        <div className="absolute z-11 bottom-0 left-0 right-0 h-[13vh] bg-white w-full flex flex-col items-center justify-center border-t-[2px] border-t-black/10">
+          <div onClick={() => setPaymentOpen(true)} className="h-[8vh] w-[85%] flex items-center justify-center cursor-pointer group">
             <div className="h-[3vh] w-[3vh] flex items-center justify-center">
               <img
                 src={paymentIcons[paymentMethod]}
@@ -446,12 +651,20 @@ const RideSelection = () => {
             </div>
           </div>
           <button
-            onClick={handleConfirmRide}
-            className="w-[80%] h-[7vh] mb-2 rounded-md bg-black text-white text-md hover:bg-zinc-800 transition-all duration-200 cursor-pointer"
+            onClick={() => {
+              if (sliderStage === 'details') {
+                setPayment(true);
+              } else {
+                handleConfirmRide();
+              }
+            }}
+            className="w-[85%] h-[7vh] mb-2 rounded-md bg-black text-white text-md hover:bg-zinc-800 transition-all duration-200 cursor-pointer"
           >
-            {sliderStage === 'details' ? 'Request another ride' : 'Confirm Ride'}
+            {sliderStage === 'details' ? 'Pay Now' : 'Confirm Ride'}
           </button>
+          
 
+          <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
           {paymentOpen && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center">
               <div className="absolute inset-0 bg-black/40" onClick={() => setPaymentOpen(false)}></div>
@@ -481,6 +694,34 @@ const RideSelection = () => {
             </div>
           )}
         </div>
+      {callState !== 'idle' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40"></div>
+          <div className="relative z-[70] w-full max-w-sm bg-gradient-to-b from-[#0e0e10] to-[#1b1b1f] text-white rounded-2xl p-6 flex flex-col items-center gap-3">
+            <div className="h-20 w-20 rounded-full overflow-hidden border border-white/20">
+              <img src="https://i.pinimg.com/1200x/9d/16/4e/9d164e4e074d11ce4de0a508914537a8.jpg" alt="" className="h-full w-full object-cover" />
+            </div>
+            <h1 className="text-lg uber-move-bold">{`${acceptedCaptain?.fullname?.firstname || ''} ${acceptedCaptain?.fullname?.lastname || ''}`.trim() || 'Captain'}</h1>
+            <h2 className="text-xs text-white/60">{callState === 'incoming' ? 'Incoming call' : callState === 'outgoing' ? 'Calling…' : 'In call'}</h2>
+            {callState === 'incoming' && (
+              <div className="w-full flex items-center justify-between gap-4 mt-2">
+                <button onClick={() => { setCallState('active'); sendMessage('call:accept', { rideId: currentRideId, by: 'user' }); if (ringStopRef.current) { ringStopRef.current(); ringStopRef.current = null; } }} className="flex-1 h-[6vh] rounded-lg bg-[#3B864E] text-white">Accept</button>
+                <button onClick={() => { setCallState('idle'); sendMessage('call:decline', { rideId: currentRideId, by: 'user' }); if (ringStopRef.current) { ringStopRef.current(); ringStopRef.current = null; } cleanupConnections(); outgoingRef.current = false; }} className="flex-1 h-[6vh] rounded-lg bg-red-500 text-white">Decline</button>
+              </div>
+            )}
+            {callState === 'outgoing' && (
+              <div className="w-full flex items-center justify-center gap-4 mt-2">
+                <button onClick={() => { setCallState('idle'); sendMessage('call:decline', { rideId: currentRideId, by: 'user' }); if (ringStopRef.current) { ringStopRef.current(); ringStopRef.current = null; } cleanupConnections(); outgoingRef.current = false; }} className="h-[6vh] w-full rounded-lg bg-zinc-500 text-white">Cancel</button>
+              </div>
+            )}
+            {callState === 'active' && (
+              <div className="w-full flex items-center justify-center gap-4 mt-2">
+                <button onClick={() => { setCallState('idle'); sendMessage('call:end', { rideId: currentRideId, by: 'user' }); cleanupConnections(); outgoingRef.current = false; }} className="h-[6vh] w-full rounded-lg bg-red-600 text-white">End Call</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {chatOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setChatOpen(false)}></div>

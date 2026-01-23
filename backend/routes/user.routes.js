@@ -16,6 +16,8 @@ router.post('/login', [
 ], userController.loginUser);
 
 router.get('/profile', authMiddleware.authUser, userController.getUserProfile);
+router.post('/profile/image', authMiddleware.authUser, userController.setUserProfileImage);
+router.get('/stats/trips', authMiddleware.authUser, userController.getUserTripsCount);
 
 router.get('/logout', authMiddleware.authUser, userController.logoutUser);
 

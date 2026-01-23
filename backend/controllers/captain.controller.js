@@ -2,6 +2,7 @@ const captainModel = require("../models/captain.model");
 const captainService = require("../services/captain.service");
 const { validationResult } = require("express-validator");
 const blacklistTokenModel = require("../models/blacklistToken.model");
+const rideModel = require("../models/ride.model");
 
 module.exports.registerCaptain = async (req, res) => {
     const errors = validationResult(req);
@@ -84,4 +85,26 @@ module.exports.logoutCaptain = async (req, res) => {
     res.status(200).json({
         message: "Captain logged out successfully",
     });
+}
+
+module.exports.setCaptainProfileImage = async (req, res) => {
+    try {
+        const img = req.body?.imageData;
+        if (!img || typeof img !== 'string' || img.length < 10) {
+            return res.status(400).json({ errors: [{ msg: 'Invalid image' }] });
+        }
+        const captain = await captainModel.findByIdAndUpdate(req.captain._id, { profileImage: img }, { new: true });
+        return res.status(200).json({ captain });
+    } catch (error) {
+        return res.status(400).json({ errors: [{ msg: error.message }] });
+    }
+}
+
+module.exports.getCaptainTripsCount = async (req, res) => {
+    try {
+        const trips = await rideModel.countDocuments({ captain: req.captain._id, status: 'completed' });
+        return res.status(200).json({ trips });
+    } catch (error) {
+        return res.status(400).json({ errors: [{ msg: error.message }] });
+    }
 }

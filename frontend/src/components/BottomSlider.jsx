@@ -63,7 +63,7 @@ const BottomSlider = ({
   return (
     <div
       ref={sheetRef}
-      className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-[0_-6px_24px_rgba(0,0,0,0.12)] ${className}`}
+      className={`absolute z-10 bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-[0_-6px_24px_rgba(0,0,0,0.12)] ${className}`}
       style={{ transform: `translateY(${translateY}px)`, transition, ...style }}
     >
       <div

@@ -2,6 +2,7 @@ const userModel = require("../models/user.model");
 const userService = require("../services/user.service");
 const { validationResult } = require("express-validator");
 const blacklistTokenModel = require("../models/blacklistToken.model");
+const rideModel = require("../models/ride.model");
 
 module.exports.registerUser = async (req, res, next) =>{
     const errors = validationResult(req);
@@ -58,4 +59,26 @@ module.exports.logoutUser = async (req, res, next) => {
     const token = req.cookies.token || req.headers.authorization.split(" ")[1];
     await blacklistTokenModel.create({ token });
     res.status(200).json({ msg: "User logged out" });
+}
+
+module.exports.setUserProfileImage = async (req, res) => {
+    try {
+        const img = req.body?.imageData;
+        if (!img || typeof img !== 'string' || img.length < 10) {
+            return res.status(400).json({ errors: [{ msg: 'Invalid image' }] });
+        }
+        const user = await userModel.findByIdAndUpdate(req.user._id, { profileImage: img }, { new: true });
+        return res.status(200).json({ user });
+    } catch (error) {
+        return res.status(400).json({ errors: [{ msg: error.message }] });
+    }
+}
+
+module.exports.getUserTripsCount = async (req, res) => {
+    try {
+        const trips = await rideModel.countDocuments({ user: req.user._id, status: 'completed' });
+        return res.status(200).json({ trips });
+    } catch (error) {
+        return res.status(400).json({ errors: [{ msg: error.message }] });
+    }
 }

@@ -70,7 +70,7 @@ const Chat = (props) => {
     if (!rideId) return
     if (window.confirm('Cancel ride?')) {
       sendMessage('ride:cancel', { rideId, by: role })
-      try { localStorage.removeItem(`chat:${rideId}`) } catch (e) {}
+      try { localStorage.setItem('redirectAfterCancel','1'); localStorage.removeItem(`chat:${rideId}`) } catch (e) {}
       setMessages([])
       if (onClose) onClose(); else navigate(role === 'captain' ? '/CaptainHome' : '/Home')
     }
