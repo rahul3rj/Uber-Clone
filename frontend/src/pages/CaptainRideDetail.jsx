@@ -144,8 +144,8 @@ const CaptainRideDetail = () => {
     return null;
   }
   return (
-    <div className="h-screen w-full flex items-center justify-center overflow-hidden">
-      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+    <div className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center overflow-hidden bg-black">
+      <div className="min-h-screen min-h-[100dvh] w-full md:w-[25%] flex flex-col items-center justify-start relative bg-white">
         <div className="h-[7vh] w-full flex items-center justify-center px-5 border-b border-b-zinc-300">
           <button
             onClick={() => { sendMessage('ride:cancel', { rideId: acceptedRide.id, by: 'captain' }); navigate('/CaptainHome'); }}
@@ -168,7 +168,7 @@ const CaptainRideDetail = () => {
                 className="h-full w-full object-cover"
               />
             </div>
-            <div className="h-auto w-[80vw] flex flex-col items-start justify-between">
+            <div className="h-auto flex-1 flex flex-col items-start justify-between">
               <div className="h-auto w-full flex items-start justify-between">
                 <h1 className="text-black text-md uber-move-bold">
                   {acceptedRide.name}
@@ -185,7 +185,7 @@ const CaptainRideDetail = () => {
             </div>
           </div>
           <div className="w-full h-auto flex flex-col items-center justify-start px-5">
-            <div className="h-[10vh] w-full flex flex-col items-start justify-center gap-1 border-b border-zinc-300">
+            <div className="h-full pt-3 w-full flex flex-col items-start justify-center gap-1 border-b border-zinc-300">
               <h1 className="text-zinc-400 text-xs uber-text font-[600]">
                 PICK UP
               </h1>
@@ -193,7 +193,7 @@ const CaptainRideDetail = () => {
                 {acceptedRide.pickup}
               </h1>
             </div>
-            <div className="h-[10vh] w-full flex flex-col items-start justify-center gap-1 border-b border-zinc-300">
+            <div className="h-full pt-3 w-full flex flex-col items-start justify-center gap-1 border-b border-zinc-300">
               <h1 className="text-zinc-400 text-xs uber-text font-[600]">
                 DROP OFF
               </h1>
@@ -201,7 +201,7 @@ const CaptainRideDetail = () => {
                 {acceptedRide.dropoff}
               </h1>
             </div>
-            <div className="h-[20vh] w-full flex flex-col items-start justify-center gap-2">
+            <div className="h-full pt-3 w-full flex flex-col items-start justify-center gap-2">
               <h1 className="text-zinc-400 text-xs uber-text font-[600] mb-2">
                 TRIP FARE
               </h1>
@@ -237,7 +237,7 @@ const CaptainRideDetail = () => {
                 </h1>
               </div>
             </div>
-            <div className="h-[10vh] w-full flex flex-1 items-center justify-between gap-5">
+            <div className="h-[10vh] w-full flex flex-1 items-center justify-between gap-5 mt-3">
               <div onClick={() => { outgoingRef.current = true; setCallState('outgoing'); sendMessage('call:initiate', { rideId, from: 'captain' }); if (!ringStopRef.current) ringStopRef.current = startRingtone(); }} className="h-[8vh] w-full flex flex-col items-center justify-center bg-[#3B864E] text-white text-sm uber-text-medium rounded-lg cursor-pointer hover:bg-[#3B864E]/90 transition-all duration-300 ease-in-out">
                 <i className="ri-phone-fill"></i>
                 <h1 className="text-white text-xs uber-text font-[500]">
@@ -258,14 +258,14 @@ const CaptainRideDetail = () => {
               </div>
 
             </div>
-            <div className="h-[25vh] w-full flex flex-col items-center justify-center mt-5 rounded-lg overflow-hidden">
+            <div className="h-[25vh] w-full flex flex-col items-center justify-center mt-3 rounded-lg overflow-hidden">
               <img
                 src="https://i.pinimg.com/originals/0c/a9/a9/0ca9a912149840edebd299271e8fbc56.gif"
                 alt=""
                 className="h-full w-full object-cover"
               />
             </div>
-            <button onClick={() => navigate('/PickupLocation', { state: { acceptedRide } })} className="h-[6vh] w-[90vw] flex flex-col items-center justify-center bg-black text-white text-sm uber-text-medium rounded-md cursor-pointer absolute bottom-5 hover:bg-zinc-700 transition-all duration-300 ease-in-out">
+            <button onClick={() => navigate('/PickupLocation', { state: { acceptedRide } })} className="h-[6vh] w-full mt-3 flex flex-col items-center justify-center bg-black text-white text-sm uber-text-medium rounded-md cursor-pointer hover:bg-zinc-700 transition-all duration-300 ease-in-out">
               <h1 className="text-white text-md uber-move-bold">
                 Go To Pickup Location
               </h1>
@@ -299,9 +299,9 @@ const CaptainRideDetail = () => {
             </div>
           )}
           {chatOpen && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            <div className="w-full fixed inset-0 z-[60] flex items-center justify-center">
               <div className="absolute inset-0 bg-black/40" onClick={() => setChatOpen(false)}></div>
-              <div className="relative z-[70] w-full max-w-md bg-white shadow-lg">
+              <div className="relative z-[70] w-full max-w-sm bg-white shadow-lg">
                 <Chat rideId={rideId} role={'captain'} onClose={() => setChatOpen(false)} />
               </div>
             </div>

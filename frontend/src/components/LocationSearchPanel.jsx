@@ -87,13 +87,17 @@ const LocationSearchPanel = ({ selected, setSelected, searchText, onSelectSugges
     <div className='h-auto w-full flex flex-col items-center justify-start text-black gap-2'>
       {loading && <div className='w-full text-center text-sm text-zinc-500'>Searching…</div>}
       {items.map((item) => (
-        <div onClick={() => { setSelected(item); onSelectSuggestion && onSelectSuggestion(item); }} key={item.id} className={`h-[7vh] w-[98%] flex justify-center items-center gap-3 cursor-pointer hover:bg-zinc-100 ${selected === item ? 'bg-zinc-100 border-2 border-black rounded-xl' : 'rounded-md'}`}  >
-          <div className='h-[5vh] w-[5vh] bg-zinc-200 rounded-full flex items-center justify-center ml-1'>
+        <div
+          onClick={() => { setSelected(item); onSelectSuggestion && onSelectSuggestion(item); }}
+          key={item.id}
+          className={`h-[7vh] w-full flex items-center justify-start gap-3 px-3 box-border border-2 cursor-pointer hover:bg-zinc-100 ${selected === item ? 'bg-zinc-100 border-black rounded-xl' : 'border-transparent rounded-md'}`}
+        >
+          <div className='h-[5vh] w-[5vh] bg-zinc-200 rounded-full flex items-center justify-center'>
             <i className="ri-map-pin-fill text-black"></i>
           </div>
-          <div className='h-[7vh] w-[75vw] flex flex-col items-start justify-center'>
-            <h1 className='text-md uber-move truncate'>{item.name}</h1>
-            <p className='text-sm w-[65vw] text-zinc-500 truncate'>{item.address}</p>
+          <div className='h-[7vh] flex-1 min-w-0 flex flex-col items-start justify-center'>
+            <h1 className='w-full text-md uber-move truncate'>{item.name}</h1>
+            <p className='w-full text-sm text-zinc-500 truncate'>{item.address}</p>
           </div>
         </div>
       ))}

@@ -331,10 +331,10 @@ const RideSelection = () => {
       }
     }, []);
   return (
-    <div className="h-screen w-full flex items-center justify-center overflow-hidden uber-move">
-      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+    <div className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center overflow-hidden uber-move bg-black">
+      <div className="min-h-screen min-h-[100dvh] w-full md:w-[25%] flex flex-col items-center justify-start relative">
         {payment && (
-            <div className="w-full h-screen bg-black/20 absolute z-99 flex flex-col items-center justify-center">
+            <div className="absolute inset-0 bg-black/20 z-99 flex flex-col items-center justify-center">
               <div className='h-[50vh] w-[80%] bg-white rounded-md flex flex-col items-center justify-center gap-4'>
                 <div className='w-[25vh] h-[25vh] flex items-center justify-center'>
                   <img
@@ -409,7 +409,7 @@ const RideSelection = () => {
         >
           <i className="ri-arrow-left-line text-xl font-bold"></i>
         </div>
-        <div className="h-[30vh] w-full">
+        <div className="h-[10vh] w-full">
           <BottomSlider
             collapsedPeek={290}
             onOpenChange={(open) => {
@@ -554,7 +554,7 @@ const RideSelection = () => {
                   <h1 className="text-sm uber-text-medium text-white">
                     Share PIN
                   </h1>
-                  <div className="h-[3vh] w-[30vw] flex items-center justify-between">
+                  <div className="h-[3vh] flex items-center justify-between gap-2">
                     <div className="h-[3vh] w-[3vh] flex items-center justify-center bg-blue-900 rounded-md">
                       <h1 className="text-sm uber-text-medium text-white">{rideOtp?.[0] ?? '•'}</h1>
                     </div>
@@ -725,7 +725,7 @@ const RideSelection = () => {
       {chatOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setChatOpen(false)}></div>
-          <div className="relative z-[70] w-full max-w-md bg-white shadow-lg">
+          <div className="relative z-[70] w-full max-w-sm bg-white shadow-lg">
             <Chat rideId={currentRideId} role={'user'} pickup={pickup} destination={destination} returnStage={sliderStage} onClose={() => setChatOpen(false)} />
           </div>
         </div>

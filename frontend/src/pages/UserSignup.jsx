@@ -69,8 +69,8 @@ const UserSignup = () => {
   };
 
   return (
-    <div className="h-screen w-full flex items-center justify-center">
-      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+    <div className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center bg-black">
+      <div className="min-h-screen min-h-[100dvh] w-full md:w-[25%] flex flex-col items-center justify-start relative bg-white">
         <img
           onClick={() => {
             window.location.href = "/";
@@ -79,12 +79,12 @@ const UserSignup = () => {
           alt=""
           className="h-12 absolute top-10 left-7"
         />
-        <div className="h-auto w-[85vw] flex flex-col items-center justify-center gap-3 mt-25">
+        <div className="h-auto w-full flex flex-col items-center justify-center gap-3 mt-25 px-5">
           <form onSubmit={handleSubmit} className="w-full flex flex-col items-center justify-center gap-3">
             <h1 className="text-sm w-full text-black poppins-medium">
               What's your name?
             </h1>
-            <div className="w-[85vw] h-[5vh] flex items-center justify-center gap-3">
+            <div className="w-full h-[5vh] flex items-center justify-center gap-3">
                 <input
               required
               value={firstName}
@@ -117,12 +117,12 @@ const UserSignup = () => {
               }}
               type="email"
               placeholder="example@email.com"
-              className="h-[5vh] w-[85vw] bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+              className="h-[5vh] w-full bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
             />
             <h1 className="text-sm w-full text-black poppins-medium">
               Create password
             </h1>
-            <div className="w-[85vw] h-[5vh] flex items-center justify-center gap-3 relative">
+            <div className="w-full h-[5vh] flex items-center justify-center gap-3 relative">
                 <input
               required
               value={createPassword}
@@ -132,7 +132,7 @@ const UserSignup = () => {
               id="createPw"
               type={showCreatePw ? "text" : "password"}
               placeholder="Create password"
-              className="h-[5vh] w-[85vw] bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+              className="h-[5vh] w-full bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
             />
             <i
               onClick={() => setShowCreatePw(!showCreatePw)}
@@ -142,7 +142,7 @@ const UserSignup = () => {
             <h1 className="text-sm w-full text-black poppins-medium">
               Confirm password
             </h1>
-            <div className="w-[85vw] h-[5vh] flex items-center justify-center gap-3 relative">
+            <div className="w-full h-[5vh] flex items-center justify-center gap-3 relative">
                 <input
               required
               value={confirmPassword}
@@ -152,7 +152,7 @@ const UserSignup = () => {
               id="confirmPw"
               type={showConfirmPw ? "text" : "password"}
               placeholder="Confirm password"
-              className="h-[5vh] w-[85vw] bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+              className="h-[5vh] w-full bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
             />
             <i
               onClick={() => setShowConfirmPw(!showConfirmPw)}
@@ -161,7 +161,7 @@ const UserSignup = () => {
             </div>
             <button
               type="submit"
-              className="h-[6vh] w-[85vw] mt-5 bg-[#000] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#222] transition-all duration-200"
+              className="h-[6vh] w-full mt-5 bg-[#000] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#222] transition-all duration-200"
             >
               Sign up
             </button>
@@ -171,7 +171,7 @@ const UserSignup = () => {
             onClick={() => {
               window.location.href = "/captain/signup";
             }}
-            className="h-[6vh] w-[85vw] mt-3 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
+            className="h-[6vh] w-full mt-3 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
           >
             Sign up as Captain
           </button>

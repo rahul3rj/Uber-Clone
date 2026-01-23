@@ -77,8 +77,8 @@ const Chat = (props) => {
   }
 
   return (
-    <div className="h-screen w-full flex items-center justify-center overflow-hidden">
-      <div className="h-screen w-full flex flex-col">
+    <div className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center overflow-hidden">
+      <div className="min-h-screen min-h-[100dvh] w-full flex flex-col">
         <div className="h-[7vh] w-full flex items-center justify-between px-5 border-b border-zinc-300">
           <button onClick={() => { if (onClose) onClose(); else if (role === 'user') navigate('/RideSelection', { state: { pickup, destination, returnStage, rideId } }); else navigate(-1); }} className="text-black text-md uber-text font-[600]">
             <i className="ri-arrow-left-line text-2xl"></i>

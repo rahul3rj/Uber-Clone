@@ -2,8 +2,8 @@ import React from 'react'
 
 const Start = () => {
   return (
-    <div className='h-screen w-full flex items-center justify-center'>
-        <div className='h-screen w-full flex flex-col items-center justify-start relative'>
+    <div className='min-h-screen min-h-[100dvh] w-full flex items-center justify-center bg-black'>
+        <div className='min-h-screen min-h-[100dvh] w-[25%] flex flex-col items-center justify-start relative'>
             <img onClick={() => {window.location.href = "/"}} src="/Uber-Logo.png" alt="" className='h-12 absolute top-10 left-7 invert'/>
             <div className='h-[80vh] w-full bg-white'>
                 <img src="/bg.gif" alt="" className='h-full w-full object-cover'/>

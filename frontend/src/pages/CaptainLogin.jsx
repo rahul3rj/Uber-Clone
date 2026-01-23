@@ -32,8 +32,8 @@ const CaptainLogin = () => {
     setPassword("");
   };
   return (
-    <div className="h-screen w-full flex items-center justify-center">
-      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+    <div className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center bg-black">
+      <div className="min-h-screen min-h-[100dvh] w-[25%] flex flex-col items-center justify-start relative bg-white">
         <div className='h-12 absolute top-10 left-7 w-auto flex items-center justify-start'>
           <img
           onClick={() => {
@@ -45,11 +45,11 @@ const CaptainLogin = () => {
         />
         <h1 className='text-md text-[#3B864E] poppins-medium'>Captain</h1>
         </div>
-        <div className="h-auto w-[85vw] flex flex-col items-center justify-center gap-3 mt-25">
+        <div className="h-auto w-full flex flex-col items-center justify-center gap-3 mt-25 px-5">
           <h1 className="text-sm w-full text-black poppins-medium">
             What's your email?
           </h1>
-          <form onSubmit={submitHandler}>
+          <form onSubmit={submitHandler} className="w-full">
             <input
               required
               value={email}
@@ -58,13 +58,13 @@ const CaptainLogin = () => {
               }}
               type="email"
               placeholder="example@email.com"
-              className="h-[5vh] w-[85vw] bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+              className="h-[5vh] w-full bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
             />
 
             <h1 className="text-sm w-full text-black poppins-medium my-3">
               Password
             </h1>
-            <div className="w-[85vw] h-[5vh] flex items-center justify-center gap-3 relative">
+            <div className="w-full h-[5vh] flex items-center justify-center gap-3 relative">
                 <input
               required
               value={password}
@@ -74,7 +74,7 @@ const CaptainLogin = () => {
               id="createPw"
               type={showPw ? "text" : "password"}
               placeholder="Password"
-              className="h-[5vh] w-[85vw] bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+              className="h-[5vh] w-full bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
             />
             <i
               onClick={() => setShowPw(!showPw)}
@@ -83,7 +83,7 @@ const CaptainLogin = () => {
             </div>
             <button
               type="submit"
-              className="h-[6vh] w-[85vw] mt-7 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
+              className="h-[6vh] w-full mt-7 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
             >
               Log in
             </button>
@@ -93,7 +93,7 @@ const CaptainLogin = () => {
             onClick={() => {
               window.location.href = "/user/login";
             }}
-            className="h-[6vh] w-[85vw] mt-3 bg-[#000] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#222] transition-all duration-200"
+            className="h-[6vh] w-full mt-3 bg-[#000] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#222] transition-all duration-200"
           >
             Log in as User
           </button>

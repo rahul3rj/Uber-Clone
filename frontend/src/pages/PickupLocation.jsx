@@ -27,8 +27,19 @@ const PickupLocation = () => {
   const markerRef = useRef(null);
   const gpsMarkerRef = useRef(null);
   const gpsLatestRef = useRef(null);
+  const directionsServiceRef = useRef(null);
+  const directionsRendererRef = useRef(null);
+  const destinationRef = useRef(null);
+  const updateRouteRef = useRef(null);
+  const lastRouteAtRef = useRef(0);
   const [followGps, setFollowGps] = useState(true);
+  const followGpsRef = useRef(true);
+  const [mapError, setMapError] = useState('');
   const [center, setCenter] = useState({ lat: typeof captain?.location?.lat === 'number' ? captain.location.lat : 37.7749, lng: typeof captain?.location?.lng === 'number' ? captain.location.lng : -122.4194 });
+
+  useEffect(() => {
+    followGpsRef.current = followGps;
+  }, [followGps]);
 
   const loadGoogleMaps = () => {
     return new Promise((resolve, reject) => {
@@ -42,21 +53,85 @@ const PickupLocation = () => {
   };
 
   useEffect(() => {
-    let map; let watchId = null;
+    let map;
+    let watchId = null;
+
+    setMapError('');
+
     loadGoogleMaps().then(() => {
       const google = window.google;
       if (!mapRef.current) return;
+
       map = new google.maps.Map(mapRef.current, { center, zoom: 15, disableDefaultUI: true });
       mapInstanceRef.current = map;
+
       markerRef.current = new google.maps.Marker({ position: center, map, clickable: false });
       gpsMarkerRef.current = new google.maps.Marker({ position: center, map, clickable: false });
-      const update = () => { const c = map.getCenter(); const next = { lat: c.lat(), lng: c.lng() }; setCenter(next); if (markerRef.current) markerRef.current.setPosition(next); };
+
+      directionsServiceRef.current = new google.maps.DirectionsService();
+      directionsRendererRef.current = new google.maps.DirectionsRenderer({ map, preserveViewport: true, suppressMarkers: true });
+
+      updateRouteRef.current = (origin) => {
+        const destination = destinationRef.current;
+        if (!origin || !destination || !directionsServiceRef.current || !directionsRendererRef.current) return;
+        const now = Date.now();
+        if (now - lastRouteAtRef.current < 9000) return;
+        lastRouteAtRef.current = now;
+        directionsServiceRef.current.route({ origin, destination, travelMode: google.maps.TravelMode.DRIVING }, (res, status) => {
+          if (status === 'OK') directionsRendererRef.current.setDirections(res);
+        });
+      };
+
+      setTimeout(() => {
+        try {
+          google.maps.event.trigger(map, 'resize');
+          const p = gpsLatestRef.current || center;
+          if (p && typeof p.lat === 'number' && typeof p.lng === 'number') map.setCenter(p);
+        } catch (e) {}
+      }, 50);
+
+      const update = () => {
+        const c = map.getCenter();
+        const next = { lat: c.lat(), lng: c.lng() };
+        setCenter(next);
+        if (markerRef.current) markerRef.current.setPosition(next);
+      };
+
       map.addListener('idle', update);
-      navigator.geolocation?.getCurrentPosition((pos) => { const p = { lat: pos.coords.latitude, lng: pos.coords.longitude }; gpsLatestRef.current = p; setCenter(p); map.setCenter(p); gpsMarkerRef.current?.setPosition(p); });
-      watchId = navigator.geolocation?.watchPosition((pos) => { const p = { lat: pos.coords.latitude, lng: pos.coords.longitude }; gpsLatestRef.current = p; gpsMarkerRef.current?.setPosition(p); if (followGps) map.setCenter(p); }, undefined, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
-    }).catch(() => {});
-    return () => { if (watchId) try { navigator.geolocation.clearWatch(watchId) } catch (e) {} };
+      map.addListener('dragstart', () => setFollowGps(false));
+
+      navigator.geolocation?.getCurrentPosition((pos) => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        gpsLatestRef.current = p;
+        setCenter(p);
+        map.setCenter(p);
+        gpsMarkerRef.current?.setPosition(p);
+        updateRouteRef.current?.(p);
+      });
+
+      watchId = navigator.geolocation?.watchPosition((pos) => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        gpsLatestRef.current = p;
+        gpsMarkerRef.current?.setPosition(p);
+        if (followGpsRef.current) map.setCenter(p);
+        updateRouteRef.current?.(p);
+      }, undefined, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
+    }).catch(() => {
+      setMapError('Map unavailable');
+    });
+
+    return () => {
+      if (watchId) {
+        try { navigator.geolocation.clearWatch(watchId) } catch (e) {}
+      }
+    };
   }, []);
+
+  useEffect(() => {
+    destinationRef.current = isOngoing ? acceptedRide?.dropoff : acceptedRide?.pickup;
+    lastRouteAtRef.current = 0;
+    if (gpsLatestRef.current) updateRouteRef.current?.(gpsLatestRef.current);
+  }, [acceptedRide, isOngoing]);
 
   const submitHandler = (e) => {
     e.preventDefault();
@@ -123,8 +198,8 @@ const PickupLocation = () => {
     return () => { off('ride:ongoing', ongoingHandler); off('ride:otp:invalid', invalidHandler); off('ride:completed', completedHandler); };
   }, [rideId, receiveMessage, off, durationMin, navigate]);
   return (
-    <div className="h-screen w-full flex items-center justify-center overflow-hidden">
-      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+    <div className="min-h-screen h-[100dvh] w-full flex items-center justify-center overflow-hidden bg-black">
+      <div className="min-h-screen h-[100dvh] w-full md:w-[25%] flex flex-col items-center justify-start relative">
         {pin && (
           <div className="absolute inset-0 bg-black/20 shadow-md flex items-center justify-center z-[99]">
             <div className='relative h-auto w-[90%] max-w-md bg-white rounded-lg flex flex-col items-center justify-center gap-4 p-5'>
@@ -152,8 +227,13 @@ const PickupLocation = () => {
         >
           <i className="ri-arrow-left-line text-2xl text-black font-bold"></i>
         </div>
-        <div className="h-screen w-full bg-white relative">
+        <div className="flex-1 min-h-0 w-full bg-white relative">
           <div ref={mapRef} className="h-full w-full" />
+          {mapError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white">
+              <p className="text-sm text-zinc-500">{mapError}</p>
+            </div>
+          )}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full pointer-events-none">
             <i className="ri-map-pin-2-fill text-4xl text-red-600 drop-shadow-md"></i>
           </div>
@@ -178,39 +258,39 @@ const PickupLocation = () => {
             }}
           >
             <div className="h-[30vh] w-full text-white flex flex-col items-start justify-start">
-              <div className="h-[8vh] w-full flex items-center justify-center flex items-center justify-between gap-5 border-b border-zinc-200">
-                <div className="h-[5vh] w-[5vh] rounded-full flex items-center justify-center bg-zinc-100">
+              <div className="h-[10vh] w-full flex items-center justify-center flex items-center justify-between gap-3 border-b border-zinc-200">
+                <div className="h-[7vh] w-[7vh] rounded-full flex items-center justify-center bg-zinc-100">
                   <i className="ri-map-pin-2-fill text-2xl text-black"></i>
                 </div>
-                <div className="h-[5vh] w-[75vw] ">
+                <div className="h-[7vh] flex-1 min-w-0">
                   <p className="text-zinc-500 text-sm">{isOngoing ? 'Destination' : 'Pick up at'}</p>
-                  <h1 className="text-black text-lg uber-move-bold truncate">
+                  <h1 className="text-black text-md uber-move truncate">
                     {isOngoing ? (acceptedRide?.dropoff || '—') : (acceptedRide?.pickup || '—')}
                   </h1>
                 </div>
               </div>
               <div className="h-[20vh] w-full flex flex-col items-center justify-center border-b border-zinc-200">
                 <div className="h-[10vh] w-full flex items-center justify-between">
-                  <div className="h-[8vh] w-[30vw] flex flex-col items-center justify-center">
+                  <div className="h-[8vh] flex-1 flex flex-col items-center justify-center">
                     <p className="text-zinc-500 text-sm">Reach at</p>
                     <h1 className="text-black text-lg uber-move-bold">
-                      {arrivalTime || (isOngoing && durationMin ? new Date(Date.now() + durationMin * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—')}
+                      {arrivalTime || (typeof durationMin === 'number' && isFinite(durationMin) && durationMin > 0 ? new Date(Date.now() + durationMin * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—')}
                     </h1>
                   </div>
-                  <div className="h-[8vh] w-[30vw] flex flex-col items-center justify-center">
+                  <div className="h-[8vh] flex-1 flex flex-col items-center justify-center">
                     <p className="text-zinc-500 text-sm">Distance</p>
                     <h1 className="text-black text-lg uber-move-bold">
                       {typeof distanceKm === 'number' ? `${distanceKm} km` : ((acceptedRide?.distance ? `${acceptedRide.distance} km` : '—'))}
                     </h1>
                   </div>
-                  <div className="h-[8vh] w-[30vw] flex flex-col items-center justify-center">
+                  <div className="h-[8vh] flex-1 flex flex-col items-center justify-center">
                     <p className="text-zinc-500 text-sm">Fare</p>
                     <h1 className="text-black text-lg uber-move-bold">₹{acceptedRide?.rideFare ?? acceptedRide?.fare ?? '—'}</h1>
                   </div>
                 </div>
                 <button
                   onClick={() => { if (isOngoing) { sendMessage('ride:complete', { rideId }); } else { setPin(true); setOtpErr(''); } }}
-                  className="h-[5vh] w-[85vw] mt-3 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
+                  className="h-[5vh] w-full mt-3 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
                 >
                   {isOngoing ? 'Drop Off' : 'Enter OTP'}
                 </button>

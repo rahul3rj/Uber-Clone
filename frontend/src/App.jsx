@@ -1,5 +1,5 @@
-import React, { useContext } from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useContext, useEffect, useState } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Start from "./pages/Start.jsx";
 import Home from "./pages/Home.jsx";
 import Userlogin from "./pages/UserLogin";
@@ -15,14 +15,37 @@ import RideSelection from "./pages/RideSelection.jsx";
 import CaptainRideDetail from "./pages/CaptainRideDetail.jsx";
 import PickupLocation from "./pages/PickupLocation.jsx";
 import Chat from "./pages/Chat.jsx";
+import Loader from "./components/Loader.jsx";
 
 
 const App = () => {
   const ans = useContext(UserDataContext);
   console.log(ans);
 
+  const location = useLocation();
+  const [showLoader, setShowLoader] = useState(false);
+  const [loaderKey, setLoaderKey] = useState(0);
+
+  useEffect(() => {
+    const shouldShow = location.pathname === "/Home" || location.pathname === "/CaptainHome";
+    if (shouldShow) {
+      setShowLoader(true);
+      setLoaderKey((k) => k + 1);
+    } else {
+      setShowLoader(false);
+    }
+  }, [location.pathname]);
+
   return (
     <div>
+      {showLoader && (
+        <Loader
+          key={loaderKey}
+          onFinish={() => {
+            setShowLoader(false);
+          }}
+        />
+      )}
       <Routes>
         <Route path="/" element={<Start />} />
         <Route path="/user/login" element={<Userlogin />} />

@@ -120,8 +120,8 @@ const CaptainHome = () => {
   }, []);
 
   return (
-    <div className="h-screen w-full flex items-center justify-center overflow-hidden">
-      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+    <div className="h-screen w-full flex items-center justify-center overflow-hidden bg-black">
+      <div className="h-screen w-full md:w-[25%] flex flex-col items-center justify-start relative">
         <div className="w-auto flex items-center justify-center absolute z-9 top-10 left-7 cursor-pointer">
           <img
             onClick={() => {
@@ -141,7 +141,6 @@ const CaptainHome = () => {
         </div>
         <div
           onMouseEnter={() => setProfileActive(true)}
-          onMouseLeave={() => setProfileActive(false)}
           className=" shadow-md h-[5vh] w-[5vh] rounded-full absolute top-10 right-10 cursor-pointer flex items-center justify-center gap-2"
         >
           <div
@@ -251,7 +250,7 @@ const CaptainHome = () => {
                           className="h-full w-full object-cover"
                         />
                       </div>
-                      <div className="h-auto w-[70vw] flex flex-col items-start justify-between">
+                      <div className="h-auto flex-1 flex flex-col items-start justify-between">
                         <div className="h-auto w-full flex items-start justify-between">
                           <h1 className="text-black text-md uber-move-bold">
                             {ride.name}

@@ -33,8 +33,8 @@ const Userlogin = () => {
   };
 
   return (
-    <div className="h-screen w-full flex items-center justify-center">
-      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+    <div className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center bg-black">
+      <div className="min-h-screen min-h-[100dvh] w-full md:w-[25%] flex flex-col items-center justify-start relative bg-white">
         <img
           onClick={() => {
             window.location.href = "/";
@@ -43,11 +43,11 @@ const Userlogin = () => {
           alt=""
           className="h-12 absolute top-10 left-7"
         />
-        <div className="h-auto w-[85vw] flex flex-col items-center justify-center gap-3 mt-25">
+        <div className="h-auto w-full flex flex-col items-center justify-center gap-3 mt-25 px-5">
           <h1 className="text-sm w-full text-black poppins-medium">
             What's your email?
           </h1>
-          <form onSubmit={submitHandler}>
+          <form onSubmit={submitHandler} className="w-full">
             <input
               required
               value={email}
@@ -56,13 +56,13 @@ const Userlogin = () => {
               }}
               type="email"
               placeholder="example@email.com"
-              className="h-[5vh] w-[85vw] bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
+              className="h-[5vh] w-full bg-[#f2f2f2] rounded-md px-5 outline-none text-sm poppins-medium"
             />
 
             <h1 className="text-sm w-full text-black poppins-medium my-3">
               Password
             </h1>
-            <div className="w-[85vw] h-[5vh] flex items-center justify-center gap-3 relative">
+            <div className="w-full h-[5vh] flex items-center justify-center gap-3 relative">
                 <input
               required
               value={password}
@@ -81,7 +81,7 @@ const Userlogin = () => {
             </div>
             <button
               type="submit"
-              className="h-[6vh] w-[85vw] mt-7 bg-[#000] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#222] transition-all duration-200"
+              className="h-[6vh] w-full mt-7 bg-[#000] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#222] transition-all duration-200"
             >
               Log in
             </button>
@@ -91,7 +91,7 @@ const Userlogin = () => {
             onClick={() => {
               window.location.href = "/captain/login";
             }}
-            className="h-[6vh] w-[85vw] mt-3 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
+            className="h-[6vh] w-full mt-3 bg-[#3B864E] text-white poppins-medium rounded-md cursor-pointer relative hover:bg-[#50AC67] transition-all duration-200"
           >
             Log in as Captain
           </button>

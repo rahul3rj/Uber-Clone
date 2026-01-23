@@ -103,8 +103,8 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="h-screen w-full flex items-center justify-center overflow-hidden">
-      <div className="h-screen w-full flex flex-col items-center justify-start relative">
+    <div className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center overflow-hidden bg-black">
+      <div className="min-h-screen min-h-[100dvh] w-full md:w-[25%] flex flex-col items-center justify-start relative">
         <img
           onClick={() => {
             window.location.href = "/Home";
@@ -157,7 +157,7 @@ const Home = () => {
         <div className="h-[5vh] w-[5vh] rounded-full bg-white absolute bottom-80 right-10 flex items-center justify-center shadow-md hover:shadow-xl transition-all ease-in-out cursor-pointer">
           <i className="ri-navigation-fill text-xl"></i>
         </div>
-        <div className="h-[30vh] w-full bg-white">
+        <div className="h-[10vh] w-full bg-white">
           <BottomSlider
             collapsedPeek={280}
             onOpenChange={(open) => {

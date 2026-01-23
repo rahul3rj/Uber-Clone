@@ -32,7 +32,7 @@ const CaptainProtectWrapper = ({ children }) => {
     })
   }, [token, navigate])
   if(isLoading){
-    return <div className='h-screen flex justify-center items-center poppins-medium text-xl'>Loading...</div>
+    return <div className='min-h-screen min-h-[100dvh] flex justify-center items-center poppins-medium text-xl'>Loading...</div>
   }
 
   return (
