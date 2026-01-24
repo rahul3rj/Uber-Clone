@@ -33,7 +33,7 @@ const CaptainLogin = () => {
   };
   return (
     <div className="min-h-screen min-h-[100dvh] w-full flex items-center justify-center bg-black">
-      <div className="min-h-screen min-h-[100dvh] w-[25%] flex flex-col items-center justify-start relative bg-white">
+      <div className="min-h-screen min-h-[100dvh] w-full md:w-[25%] flex flex-col items-center justify-start relative bg-white">
         <div className='h-12 absolute top-10 left-7 w-auto flex items-center justify-start'>
           <img
           onClick={() => {
